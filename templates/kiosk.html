@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+  <title>Ponto Eletrônico</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap-icons/bootstrap-icons.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/inter/fonts.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="kiosk-body">
+
+  <div id="tela-inicial" class="kiosk-overlay">
+    {% if config and config.logo_path %}
+      <img src="{{ url_for('static', filename=config.logo_path) }}" class="kiosk-logo" alt="Logo da instituição">
+    {% endif %}
+    <h1>{{ config.nome_instituicao if config and config.nome_instituicao else "Ponto Eletrônico" }}</h1>
+    <p>Toque no botão abaixo para ligar a câmera e bater o ponto.</p>
+    <button id="botao-iniciar" class="botao-grande" type="button">
+      <i class="bi bi-camera-fill me-2"></i>Iniciar
+    </button>
+  </div>
+
+  <div id="tela-camera" class="kiosk-camera oculto">
+    <div class="kiosk-relogio" id="relogio"></div>
+    <video id="video" autoplay playsinline muted></video>
+    <canvas id="canvas" class="oculto"></canvas>
+    <div class="kiosk-instrucao"><i class="bi bi-qr-code-scan me-2"></i>Aproxime seu crachá</div>
+  </div>
+
+  <div id="tela-feedback" class="kiosk-feedback oculto">
+    <img id="feedback-foto" class="feedback-foto oculto" alt="">
+    <div id="feedback-icone" class="feedback-icone"></div>
+    <div id="feedback-texto" class="feedback-texto"></div>
+    <div id="feedback-subtexto" class="feedback-subtexto"></div>
+  </div>
+
+  <a href="{{ url_for('login') }}" class="kiosk-admin-link" title="Área administrativa">
+    <i class="bi bi-gear-fill"></i>
+  </a>
+
+  <script src="{{ url_for('static', filename='js/jsqr.min.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/kiosk.js') }}"></script>
+</body>
+</html>

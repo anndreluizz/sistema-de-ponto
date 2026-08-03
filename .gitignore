@@ -1,0 +1,26 @@
+# Ambiente virtual Python (recriado pelo iniciar.bat)
+venv/
+
+# Banco de dados real e backups — contém dados pessoais reais dos funcionários
+# (CPF, RG, salário, telefone, e-mail, endereço de documentos)
+ponto.db
+ponto.db.bak-*
+backups/
+
+# Chave de sessão do Flask — nunca deve ser compartilhada
+.secret_key
+
+# Conteúdo enviado/gerado em tempo de execução (fotos, crachás/QR Code, logo,
+# documentos anexados) — dados pessoais reais, não fazem parte do código
+static/fotos/
+static/qrcodes/
+static/uploads/
+uploads_privados/
+
+# Cache Python / pytest
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Configuração interna do Claude Code, não faz parte do projeto
+.claude/

@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf_input %}
+{% block titulo %}Trocar senha{% endblock %}
+{% block conteudo %}
+  <h1 class="h3 fw-bold mb-4">Trocar senha do administrador</h1>
+  <form method="post" class="card" style="max-width: 420px;">
+    {{ csrf_input() }}
+    <div class="card-body d-flex flex-column gap-3">
+      <div>
+        <label for="senha_atual" class="form-label">Senha atual</label>
+        <input type="password" id="senha_atual" name="senha_atual" class="form-control" required>
+      </div>
+      <div>
+        <label for="nova_senha" class="form-label">Nova senha</label>
+        <input type="password" id="nova_senha" name="nova_senha" class="form-control" minlength="6" required>
+      </div>
+      <div>
+        <label for="confirmar_senha" class="form-label">Confirmar nova senha</label>
+        <input type="password" id="confirmar_senha" name="confirmar_senha" class="form-control" minlength="6" required>
+      </div>
+      <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Salvar nova senha</button>
+    </div>
+  </form>
+{% endblock %}

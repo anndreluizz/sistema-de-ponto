@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% from "_macros.html" import cabecalho_relatorio %}
+{% block titulo %}Histórico de ponto{% endblock %}
+{% block conteudo %}
+  <div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-2">
+    {{ cabecalho_relatorio(config, "Histórico — " ~ funcionario.nome, (funcionario.cargo or "") ~ (" · " ~ funcionario.setor_nome if funcionario.setor_nome else "")) }}
+    <a href="{{ url_for('funcionarios') }}" class="btn btn-outline-secondary sem-impressao">
+      <i class="bi bi-arrow-left me-1"></i>Voltar
+    </a>
+  </div>
+
+  <form method="get" class="card mb-4 sem-impressao">
+    <div class="card-body">
+      <div class="row g-2 align-items-end">
+        <div class="col-md-4">
+          <label class="form-label">De</label>
+          <input type="date" name="data_inicio" class="form-control" value="{{ data_inicio }}">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Até</label>
+          <input type="date" name="data_fim" class="form-control" value="{{ data_fim }}">
+        </div>
+        <div class="col-md-4">
+          <button type="submit" class="btn btn-primary w-100"><i class="bi bi-funnel me-1"></i>Filtrar</button>
+        </div>
+      </div>
+      <div class="d-flex gap-2 mt-3">
+        <a class="btn btn-outline-secondary btn-sm"
+           href="{{ url_for('historico_exportar_pdf', funcionario_id=funcionario.id, data_inicio=data_inicio, data_fim=data_fim) }}">
+          <i class="bi bi-file-earmark-pdf me-1"></i>Exportar PDF
+        </a>
+        <a class="btn btn-outline-secondary btn-sm"
+           href="{{ url_for('historico_exportar_excel', funcionario_id=funcionario.id, data_inicio=data_inicio, data_fim=data_fim) }}">
+          <i class="bi bi-file-earmark-excel me-1"></i>Exportar Excel
+        </a>
+        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.print()">
+          <i class="bi bi-printer me-1"></i>Imprimir
+        </button>
+      </div>
+    </div>
+  </form>
+
+  <form method="get" action="{{ url_for('espelho_ponto_pdf', funcionario_id=funcionario.id) }}"
+        target="_blank" class="card mb-4 sem-impressao">
+    <div class="card-body">
+      <div class="row g-2 align-items-end">
+        <div class="col-md-4">
+          <label class="form-label">Espelho de Ponto (mês)</label>
+          <input type="month" name="mes" class="form-control" value="{{ mes_atual }}">
+        </div>
+        <div class="col-md-4">
+          <button type="submit" class="btn btn-outline-secondary w-100">
+            <i class="bi bi-file-earmark-pdf me-1"></i>Gerar Espelho de Ponto
+          </button>
+        </div>
+      </div>
+    </div>
+  </form>
+
+  <div class="card">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead>
+          <tr>
+            <th>Data</th><th>Entrada</th><th>Saída (almoço)</th><th>Retorno</th><th>Saída</th>
+            <th>Horas trabalhadas</th><th>Horas extras</th><th>Justificativa</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for linha in linhas %}
+            <tr>
+              <td>
+                {{ linha.data.strftime('%d/%m/%Y') }}
+                {% if linha.pares|length > 2 %}
+                  <details class="d-inline-block sem-impressao">
+                    <summary class="badge text-bg-secondary" style="cursor:pointer;">+{{ linha.pares|length }} batidas</summary>
+                    <div class="small mt-1">
+                      {% for par in linha.pares %}
+                        <div>{{ par.entrada.timestamp[11:16] if par.entrada else "—" }} → {{ par.saida.timestamp[11:16] if par.saida else "em andamento" }}</div>
+                      {% endfor %}
+                    </div>
+                  </details>
+                {% endif %}
+              </td>
+              <td>{{ linha.entrada.timestamp[11:16] if linha.entrada else "—" }}</td>
+              <td>{{ linha.saida_almoco.timestamp[11:16] if linha.saida_almoco else "—" }}</td>
+              <td>{{ linha.retorno.timestamp[11:16] if linha.retorno else "—" }}</td>
+              <td>{{ linha.saida.timestamp[11:16] if linha.saida else "—" }}</td>
+              <td>{{ linha.total_horas }}</td>
+              <td>{{ linha.horas_extras }}</td>
+              <td>
+                {% if linha.ausencia %}
+                  <span class="badge text-bg-info">{{ nomes_tipo_ausencia.get(linha.ausencia.tipo, linha.ausencia.tipo) }}</span>
+                  {% if linha.ausencia.observacao %}<div class="small text-secondary">{{ linha.ausencia.observacao }}</div>{% endif %}
+                {% else %}—{% endif %}
+              </td>
+            </tr>
+          {% else %}
+            <tr><td colspan="8" class="text-secondary text-center py-4">Nenhum registro ou justificativa nesse período.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+{% endblock %}

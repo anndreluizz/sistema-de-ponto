@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf_input %}
+{% block titulo %}Escalas{% endblock %}
+{% block conteudo %}
+  <div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-2">
+    <div>
+      <h1 class="h3 fw-bold mb-1">Escalas</h1>
+      <p class="text-secondary mb-0">Rodízios de trabalho (ex: 12x36, 24x72) para funcionários com escala de plantão.</p>
+    </div>
+    <a href="{{ url_for('turnos') }}" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-clock me-1"></i>Gerenciar turnos
+    </a>
+  </div>
+
+  <div class="row g-4">
+    <div class="col-lg-5">
+      <div class="card">
+        <div class="card-body">
+          <h2 class="h6 fw-bold mb-3"><i class="bi bi-plus-circle me-1"></i>Nova escala</h2>
+          {% if not turnos %}
+            <p class="text-secondary small">Cadastre um <a href="{{ url_for('turnos') }}">turno</a> primeiro — a escala reaproveita o horário e as tolerâncias de um turno já existente.</p>
+          {% else %}
+            <form method="post" class="d-flex flex-column gap-2">
+              {{ csrf_input() }}
+              <input type="text" name="nome" class="form-control" placeholder="Nome (ex: Plantão 12x36)" required>
+              <div>
+                <label class="form-label small mb-1">Turno base (horário, almoço, tolerâncias)</label>
+                <select name="turno_id" class="form-select" required>
+                  {% for t in turnos %}
+                    <option value="{{ t.id }}">{{ t.nome }} ({{ t.horario_entrada }}–{{ t.horario_saida }})</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="row g-2">
+                <div class="col">
+                  <label class="form-label small mb-1">Dias de trabalho no ciclo</label>
+                  <input type="number" name="ciclo_dias_trabalho" class="form-control" value="1" min="1" required>
+                </div>
+                <div class="col">
+                  <label class="form-label small mb-1">Dias de descanso no ciclo</label>
+                  <input type="number" name="ciclo_dias_descanso" class="form-control" value="1" min="1" required>
+                </div>
+              </div>
+              <div class="form-text mt-0">
+                Ex: 12x36 = 1 dia de trabalho, 1 dia de descanso. 24x72 = 1 dia de trabalho, 3 dias de descanso.
+                A data exata em que o ciclo começa é definida por funcionário, ao cadastrá-lo.
+              </div>
+              <button type="submit" class="btn btn-primary mt-1"><i class="bi bi-plus-lg me-1"></i>Adicionar</button>
+            </form>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-7">
+      <div class="card">
+        <div class="card-body">
+          <h2 class="h6 fw-bold mb-3">Escalas cadastradas</h2>
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead><tr><th>Nome</th><th>Turno base</th><th>Ciclo</th><th>Func.</th><th class="text-end">Ações</th></tr></thead>
+              <tbody>
+                {% for e in escalas %}
+                <tr>
+                  <td>{{ e.nome }}</td>
+                  <td>{{ e.turno_nome }}</td>
+                  <td>{{ e.ciclo_dias_trabalho }} trabalho / {{ e.ciclo_dias_descanso }} descanso</td>
+                  <td>{{ e.total_funcionarios }}</td>
+                  <td class="text-end">
+                    <details class="d-inline-block">
+                      <summary class="btn btn-sm btn-outline-secondary" title="Editar">
+                        <i class="bi bi-pencil"></i>
+                      </summary>
+                      <form method="post" action="{{ url_for('editar_escala', escala_id=e.id) }}"
+                            class="d-flex flex-column gap-2 mt-2 p-2 border rounded bg-light text-start">
+                        {{ csrf_input() }}
+                        <input type="text" name="nome" value="{{ e.nome }}" class="form-control form-control-sm" placeholder="Nome">
+                        <select name="turno_id" class="form-select form-select-sm">
+                          {% for t in turnos %}
+                            <option value="{{ t.id }}" {{ "selected" if e.turno_id == t.id else "" }}>{{ t.nome }}</option>
+                          {% endfor %}
+                        </select>
+                        <div class="d-flex gap-2">
+                          <input type="number" name="ciclo_dias_trabalho" value="{{ e.ciclo_dias_trabalho }}"
+                                 class="form-control form-control-sm" min="1" title="Dias de trabalho">
+                          <input type="number" name="ciclo_dias_descanso" value="{{ e.ciclo_dias_descanso }}"
+                                 class="form-control form-control-sm" min="1" title="Dias de descanso">
+                        </div>
+                        <button type="submit" class="btn btn-sm btn-primary">Salvar</button>
+                      </form>
+                    </details>
+                    <form method="post" action="{{ url_for('excluir_escala', escala_id=e.id) }}"
+                          class="form-confirmar d-inline" data-confirmar="Excluir a escala '{{ e.nome }}'?">
+                      {{ csrf_input() }}
+                      <button type="submit" class="btn btn-sm btn-outline-danger" title="Excluir">
+                        <i class="bi bi-trash"></i>
+                      </button>
+                    </form>
+                  </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="5" class="text-secondary">Nenhuma escala cadastrada ainda.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}

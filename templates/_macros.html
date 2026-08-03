@@ -1,0 +1,51 @@
+{% macro csrf_input() %}
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+{% endmacro %}
+
+{% macro avatar(f, tamanho=48) %}
+  {% if f.foto %}
+    <img src="{{ url_for('static', filename=f.foto) }}" class="avatar-img rounded-circle"
+         style="width:{{ tamanho }}px;height:{{ tamanho }}px;" alt="Foto de {{ f.nome }}">
+  {% else %}
+    <div class="avatar-iniciais rounded-circle"
+         style="width:{{ tamanho }}px;height:{{ tamanho }}px;background:{{ f.nome|cor_avatar }};font-size:{{ (tamanho * 0.38)|round|int }}px;">{{ f.nome|iniciais }}</div>
+  {% endif %}
+{% endmacro %}
+
+{% macro badge_situacao(situacao) %}
+  {% set mapa = {
+    "ativo": ("success", "Ativo"),
+    "inativo": ("secondary", "Inativo"),
+    "ferias": ("info", "Férias"),
+    "afastado": ("warning", "Afastado"),
+  } %}
+  {% set par = mapa.get(situacao, ("secondary", situacao)) %}
+  <span class="badge rounded-pill text-bg-{{ par[0] }}">{{ par[1] }}</span>
+{% endmacro %}
+
+{% macro badge_tipo_ausencia(tipo, nomes_tipo_ausencia) %}
+  <span class="badge text-bg-info">{{ nomes_tipo_ausencia.get(tipo, tipo) }}</span>
+{% endmacro %}
+
+{% macro badge_perfil(perfil, nomes_perfil) %}
+  {% set mapa = {
+    "administrador": "primary",
+    "rh": "success",
+    "direcao": "info",
+    "consulta": "secondary",
+  } %}
+  <span class="badge rounded-pill text-bg-{{ mapa.get(perfil, 'secondary') }}">{{ nomes_perfil.get(perfil, perfil) }}</span>
+{% endmacro %}
+
+{% macro cabecalho_relatorio(config, titulo, subtitulo) %}
+  <div class="d-flex align-items-center gap-3 mb-3">
+    {% if config and config.logo_path %}
+      <img src="{{ url_for('static', filename=config.logo_path) }}" style="max-height:48px;" alt="Logo">
+    {% endif %}
+    <div>
+      <div class="fw-bold">{{ (config.nome_instituicao if config and config.nome_instituicao else "Ponto Eletrônico") }}</div>
+      <div class="h5 fw-bold mb-0">{{ titulo }}</div>
+      <div class="text-secondary small">{{ subtitulo }}</div>
+    </div>
+  </div>
+{% endmacro %}

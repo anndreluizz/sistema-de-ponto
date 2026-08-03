@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% from "_macros.html" import badge_perfil, csrf_input %}
+{% block titulo %}Usuários{% endblock %}
+{% block conteudo %}
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 fw-bold mb-0">Usuários</h1>
+    <a href="{{ url_for('novo_usuario') }}" class="btn btn-primary"><i class="bi bi-person-plus me-1"></i>Novo usuário</a>
+  </div>
+
+  <div class="card">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead>
+          <tr><th>Nome</th><th>Usuário</th><th>Perfil</th><th>Status</th><th>Criado em</th><th class="text-end">Ações</th></tr>
+        </thead>
+        <tbody>
+          {% for u in usuarios %}
+            <tr class="{{ 'opacity-50' if not u.ativo else '' }}">
+              <td>{{ u.nome }}</td>
+              <td>{{ u.usuario }}</td>
+              <td>{{ badge_perfil(u.perfil, nomes_perfil) }}</td>
+              <td>
+                <span class="badge rounded-pill {{ 'text-bg-success' if u.ativo else 'text-bg-secondary' }}">
+                  {{ "Ativo" if u.ativo else "Inativo" }}
+                </span>
+              </td>
+              <td class="text-secondary small">{{ u.criado_em }}</td>
+              <td class="text-end">
+                <div class="dropdown">
+                  <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="dropdown"><i class="bi bi-three-dots"></i></button>
+                  <ul class="dropdown-menu dropdown-menu-end">
+                    <li><a class="dropdown-item" href="{{ url_for('editar_usuario', usuario_id=u.id) }}"><i class="bi bi-pencil me-2"></i>Editar</a></li>
+                    <li>
+                      <button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#modal-resetar-{{ u.id }}">
+                        <i class="bi bi-key me-2"></i>Resetar senha
+                      </button>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    {% if u.ativo %}
+                      <li>
+                        <form method="post" action="{{ url_for('mudar_situacao_usuario', usuario_id=u.id) }}">
+                          {{ csrf_input() }}
+                          <input type="hidden" name="ativo" value="0">
+                          <button type="submit" class="dropdown-item"><i class="bi bi-slash-circle me-2"></i>Inativar</button>
+                        </form>
+                      </li>
+                    {% else %}
+                      <li>
+                        <form method="post" action="{{ url_for('mudar_situacao_usuario', usuario_id=u.id) }}">
+                          {{ csrf_input() }}
+                          <input type="hidden" name="ativo" value="1">
+                          <button type="submit" class="dropdown-item text-success"><i class="bi bi-check-circle me-2"></i>Ativar</button>
+                        </form>
+                      </li>
+                    {% endif %}
+                  </ul>
+                </div>
+              </td>
+            </tr>
+          {% else %}
+            <tr><td colspan="6" class="text-secondary text-center py-4">Nenhum usuário cadastrado ainda.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {% for u in usuarios %}
+    <div class="modal fade" id="modal-resetar-{{ u.id }}" tabindex="-1">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <form method="post" action="{{ url_for('resetar_senha_usuario', usuario_id=u.id) }}">
+            {{ csrf_input() }}
+            <div class="modal-header">
+              <h5 class="modal-title">Resetar senha de {{ u.nome }}</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              <label class="form-label">Nova senha</label>
+              <input type="password" name="nova_senha" class="form-control" minlength="6" required>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+              <button type="submit" class="btn btn-primary">Salvar</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  {% endfor %}
+{% endblock %}

@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf_input %}
+{% block titulo %}Configurações{% endblock %}
+{% block conteudo %}
+  <form method="post" enctype="multipart/form-data">
+    {{ csrf_input() }}
+    <div class="row g-4">
+      <div class="col-lg-6">
+        <div class="card">
+          <div class="card-body">
+            <h2 class="h6 fw-bold mb-3">Dados da instituição</h2>
+            <div class="mb-3">
+              <label class="form-label">Nome da instituição</label>
+              <input type="text" name="nome_instituicao" class="form-control"
+                     value="{{ config.nome_instituicao }}" placeholder="Ex: Escola Municipal Exemplo">
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Logo</label>
+              <div class="d-flex align-items-center gap-3">
+                {% if config.logo_path %}
+                  <img src="{{ url_for('static', filename=config.logo_path) }}" alt="Logo atual" style="max-height:60px;">
+                {% endif %}
+                <input type="file" name="logo" class="form-control" accept=".png,.jpg,.jpeg,.webp">
+              </div>
+              <div class="form-text">Aparece no crachá e no totem. Formatos aceitos: JPG, PNG ou WEBP.</div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Rodapé do crachá</label>
+              <input type="text" name="rodape_cracha" class="form-control"
+                     value="{{ config.rodape_cracha }}" placeholder="Ex: Válido somente para uso interno">
+            </div>
+            <div class="mb-3">
+              <label class="form-label d-block">Cor principal do sistema</label>
+              <input type="color" name="cor_primaria" class="form-control form-control-color"
+                     value="{{ config.cor_primaria or '#1E40AF' }}" title="Escolha a cor principal">
+              <div class="form-text">Usada na barra lateral, botões e destaques em todo o sistema.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-6">
+        <div class="card">
+          <div class="card-body">
+            <h2 class="h6 fw-bold mb-3">Backup automático</h2>
+            <div class="mb-3">
+              <label class="form-label">Frequência</label>
+              <select name="backup_frequencia_horas" class="form-select">
+                <option value="6" {{ "selected" if config.backup_frequencia_horas == 6 else "" }}>A cada 6 horas</option>
+                <option value="12" {{ "selected" if config.backup_frequencia_horas == 12 else "" }}>A cada 12 horas</option>
+                <option value="24" {{ "selected" if not config.backup_frequencia_horas or config.backup_frequencia_horas == 24 else "" }}>A cada 24 horas (padrão)</option>
+                <option value="48" {{ "selected" if config.backup_frequencia_horas == 48 else "" }}>A cada 48 horas</option>
+                <option value="168" {{ "selected" if config.backup_frequencia_horas == 168 else "" }}>Uma vez por semana</option>
+              </select>
+              <div class="form-text">
+                Isso só é verificado quando alguém acessa o sistema — não é um relógio rodando sozinho.
+                Se o sistema ficar muito tempo sem uso, o próximo backup roda assim que alguém entrar de novo.
+              </div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Pasta de destino extra (opcional)</label>
+              <input type="text" name="backup_pasta_destino" class="form-control"
+                     value="{{ config.backup_pasta_destino or '' }}"
+                     placeholder="Ex: C:\Users\seu-usuario\OneDrive\Backups Ponto">
+              <div class="form-text">
+                Se preencher, cada backup automático também é copiado pra essa pasta — útil se ela já for
+                sincronizada por um programa como OneDrive ou Google Drive (o sistema só copia o arquivo
+                pra pasta local, quem sincroniza com a nuvem é o próprio programa). A pasta precisa já
+                existir no computador. Deixe em branco pra desativar.
+              </div>
+            </div>
+            <div class="form-text mb-0">Veja os backups já gerados em <a href="{{ url_for('backup') }}">Backup</a>.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary mt-4"><i class="bi bi-check-lg me-1"></i>Salvar configurações</button>
+  </form>
+{% endblock %}

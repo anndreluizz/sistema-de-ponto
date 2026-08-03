@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% from "_macros.html" import avatar, badge_situacao, csrf_input %}
+{% block titulo %}Funcionários{% endblock %}
+{% block conteudo %}
+
+  <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+      <h1 class="h3 fw-bold mb-1">Funcionários</h1>
+      <p class="text-secondary mb-0" id="contador-funcionarios"></p>
+    </div>
+    {% if session.usuario_perfil in ('administrador', 'rh') %}
+      <a href="{{ url_for('novo_funcionario') }}" class="btn btn-primary">
+        <i class="bi bi-person-plus me-1"></i> Novo funcionário
+      </a>
+    {% endif %}
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="row g-2">
+        <div class="col-md-4">
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-search"></i></span>
+            <input type="text" id="busca-funcionario" class="form-control" placeholder="Buscar por nome, cargo ou matrícula...">
+          </div>
+        </div>
+        <div class="col-md-3">
+          <select id="filtro-situacao" class="form-select">
+            <option value="">Todas as situações</option>
+            <option value="ativo">Ativo</option>
+            <option value="inativo">Inativo</option>
+            <option value="ferias">Férias</option>
+            <option value="afastado">Afastado</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <select id="filtro-setor" class="form-select">
+            <option value="">Todos os setores</option>
+            {% for s in setores %}<option value="{{ s.id }}">{{ s.nome }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="col-md-2">
+          <select id="filtro-turno" class="form-select">
+            <option value="">Todos os turnos</option>
+            {% for t in turnos %}<option value="{{ t.id }}">{{ t.nome }}</option>{% endfor %}
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0 tabela-funcionarios" id="tabela-funcionarios">
+        <thead>
+          <tr>
+            <th>Funcionário</th>
+            <th>Setor</th>
+            <th>Turno</th>
+            <th>Último ponto</th>
+            <th>Status</th>
+            <th class="text-end">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for f in funcionarios %}
+          <tr data-busca="{{ (f.nome ~ ' ' ~ f.cargo ~ ' ' ~ (f.matricula or ''))|lower }}"
+              data-situacao="{{ f.situacao }}"
+              data-setor="{{ f.setor_id or '' }}"
+              data-turno="{{ f.turno_id or '' }}">
+            <td>
+              <div class="d-flex align-items-center gap-2">
+                {{ avatar(f, tamanho=40) }}
+                <div>
+                  <div class="fw-semibold">{{ f.nome }}</div>
+                  <div class="text-secondary small">{{ f.cargo }}{% if f.matricula %} · Mat. {{ f.matricula }}{% endif %}</div>
+                </div>
+              </div>
+            </td>
+            <td>{{ f.setor_nome or "—" }}</td>
+            <td>{{ f.turno_ou_escala_nome or "—" }}</td>
+            <td>
+              {% if f.ultimo_timestamp %}
+                {{ f.ultimo_timestamp[8:10] }}/{{ f.ultimo_timestamp[5:7] }} às {{ f.ultimo_timestamp[11:16] }}
+              {% else %}
+                <span class="text-secondary">Nunca</span>
+              {% endif %}
+            </td>
+            <td>{{ badge_situacao(f.situacao) }}</td>
+            <td class="text-end">
+              <div class="dropdown">
+                <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="dropdown" title="Ações">
+                  <i class="bi bi-three-dots"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                  {% if session.usuario_perfil in ('administrador', 'rh') %}
+                    <li><a class="dropdown-item" href="{{ url_for('editar_funcionario', funcionario_id=f.id) }}"><i class="bi bi-pencil me-2"></i>Editar</a></li>
+                  {% endif %}
+                  <li><a class="dropdown-item" href="{{ url_for('cracha_funcionario', funcionario_id=f.id) }}" target="_blank"><i class="bi bi-person-vcard me-2"></i>Ver crachá</a></li>
+                  <li><a class="dropdown-item" href="{{ url_for('historico_funcionario', funcionario_id=f.id) }}"><i class="bi bi-clock-history me-2"></i>Histórico de ponto</a></li>
+                  <li><a class="dropdown-item" href="{{ url_for('banco_horas_funcionario', funcionario_id=f.id) }}"><i class="bi bi-piggy-bank me-2"></i>Banco de horas</a></li>
+                  {% if session.usuario_perfil in ('administrador', 'rh') %}
+                    <li><a class="dropdown-item" href="{{ url_for('ajustes_ponto', funcionario_id=f.id) }}"><i class="bi bi-pencil-square me-2"></i>Ajustar registros</a></li>
+                    <li><a class="dropdown-item" href="{{ url_for('historico_alteracoes_funcionario', funcionario_id=f.id) }}"><i class="bi bi-journal-text me-2"></i>Histórico de alterações</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    {% if f.situacao != 'ativo' %}
+                    <li>
+                      <form method="post" action="{{ url_for('mudar_situacao_funcionario', funcionario_id=f.id) }}">
+                        {{ csrf_input() }}
+                        <input type="hidden" name="situacao" value="ativo">
+                        <button type="submit" class="dropdown-item text-success"><i class="bi bi-check-circle me-2"></i>Marcar como ativo</button>
+                      </form>
+                    </li>
+                    {% endif %}
+                    {% if f.situacao != 'inativo' %}
+                    <li>
+                      <form method="post" action="{{ url_for('mudar_situacao_funcionario', funcionario_id=f.id) }}">
+                        {{ csrf_input() }}
+                        <input type="hidden" name="situacao" value="inativo">
+                        <button type="submit" class="dropdown-item"><i class="bi bi-slash-circle me-2"></i>Marcar como inativo</button>
+                      </form>
+                    </li>
+                    {% endif %}
+                    {% if f.situacao != 'ferias' %}
+                    <li>
+                      <form method="post" action="{{ url_for('mudar_situacao_funcionario', funcionario_id=f.id) }}">
+                        {{ csrf_input() }}
+                        <input type="hidden" name="situacao" value="ferias">
+                        <button type="submit" class="dropdown-item text-info"><i class="bi bi-airplane me-2"></i>Marcar como férias</button>
+                      </form>
+                    </li>
+                    {% endif %}
+                    {% if f.situacao != 'afastado' %}
+                    <li>
+                      <form method="post" action="{{ url_for('mudar_situacao_funcionario', funcionario_id=f.id) }}">
+                        {{ csrf_input() }}
+                        <input type="hidden" name="situacao" value="afastado">
+                        <button type="submit" class="dropdown-item text-warning"><i class="bi bi-bandaid me-2"></i>Marcar como afastado</button>
+                      </form>
+                    </li>
+                    {% endif %}
+                  {% endif %}
+                </ul>
+              </div>
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="6" class="text-secondary text-center py-4">Nenhum funcionário cadastrado ainda.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="d-flex justify-content-center gap-2 mt-3" id="paginacao-funcionarios"></div>
+
+{% endblock %}
+{% block js_extra %}
+  <script src="{{ url_for('static', filename='js/funcionarios.js') }}"></script>
+{% endblock %}

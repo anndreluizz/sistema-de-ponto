@@ -1,0 +1,267 @@
+{% extends "base.html" %}
+{% from "_macros.html" import avatar %}
+{% block titulo %}Dashboard{% endblock %}
+{% block conteudo %}
+
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h1 class="h3 fw-bold mb-1">Painel de controle</h1>
+      <p class="text-secondary mb-0">Visão geral da frequência de hoje.</p>
+    </div>
+    {% if session.usuario_perfil in ('administrador', 'rh') %}
+      <a href="{{ url_for('novo_funcionario') }}" class="btn btn-primary">
+        <i class="bi bi-person-plus me-1"></i> Novo funcionário
+      </a>
+    {% endif %}
+  </div>
+
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-4 col-xl-2">
+      <div class="card card-hover card-indicador h-100">
+        <div class="indicador-icone bg-icone-primary"><i class="bi bi-people"></i></div>
+        <div class="indicador-valor">{{ indicadores.total_ativos }}</div>
+        <div class="indicador-rotulo">Funcionários ativos</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+      <div class="card card-hover card-indicador h-100">
+        <div class="indicador-icone bg-icone-success"><i class="bi bi-door-open"></i></div>
+        <div class="indicador-valor">{{ indicadores.presentes|length }}</div>
+        <div class="indicador-rotulo">Presentes agora</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+      <div class="card card-hover card-indicador h-100">
+        <div class="indicador-icone bg-icone-info"><i class="bi bi-person-dash"></i></div>
+        <div class="indicador-valor">{{ indicadores.ausentes|length }}</div>
+        <div class="indicador-rotulo">Ausentes até agora</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+      <div class="card card-hover card-indicador h-100">
+        <div class="indicador-icone bg-icone-primary"><i class="bi bi-clipboard-check"></i></div>
+        <div class="indicador-valor">{{ indicadores.registros_hoje }}</div>
+        <div class="indicador-rotulo">Registros hoje</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+      <div class="card card-hover card-indicador h-100">
+        <div class="indicador-icone bg-icone-warning"><i class="bi bi-clock-history"></i></div>
+        <div class="indicador-valor">{{ indicadores.atrasados|length }}</div>
+        <div class="indicador-rotulo">Atrasos hoje</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+      <div class="card card-hover card-indicador h-100">
+        <div class="indicador-icone bg-icone-danger"><i class="bi bi-calendar-x"></i></div>
+        <div class="indicador-valor">
+          {{ indicadores.faltas|length }}
+          <i class="bi bi-info-circle small text-secondary" data-bs-toggle="tooltip"
+             title="Atualizado em tempo real: quem chegar ainda hoje sai desta lista e passa para Atrasos."></i>
+        </div>
+        <div class="indicador-rotulo">Faltas (até agora)</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-4 col-xl-2">
+      <div class="card card-hover card-indicador h-100">
+        <div class="indicador-icone bg-icone-info"><i class="bi bi-cup-hot"></i></div>
+        <div class="indicador-valor">{{ indicadores.em_intervalo|length }}</div>
+        <div class="indicador-rotulo">Em intervalo</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+      <div class="card card-hover card-indicador h-100">
+        <div class="indicador-icone bg-icone-info"><i class="bi bi-airplane"></i></div>
+        <div class="indicador-valor">{{ indicadores.ferias_hoje|length }}</div>
+        <div class="indicador-rotulo">Em férias hoje</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+      <div class="card card-hover card-indicador h-100">
+        <div class="indicador-icone bg-icone-warning"><i class="bi bi-file-medical"></i></div>
+        <div class="indicador-valor">{{ indicadores.licencas_hoje|length }}</div>
+        <div class="indicador-rotulo">Licenças hoje</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+      <div class="card card-hover card-indicador h-100">
+        <div class="indicador-icone bg-icone-warning"><i class="bi bi-clipboard2-pulse"></i></div>
+        <div class="indicador-valor">{{ indicadores.atestados_hoje|length }}</div>
+        <div class="indicador-rotulo">Atestados hoje</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+      <div class="card card-hover card-indicador h-100">
+        <div class="indicador-icone bg-icone-success"><i class="bi bi-alarm"></i></div>
+        <div class="indicador-valor">{{ indicadores.horas_extras_hoje }}</div>
+        <div class="indicador-rotulo">Horas extras hoje</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+      <div class="card card-hover card-indicador h-100">
+        <div class="indicador-icone bg-icone-warning"><i class="bi bi-box-arrow-right"></i></div>
+        <div class="indicador-valor">{{ indicadores.saidas_antecipadas|length }}</div>
+        <div class="indicador-rotulo">Saídas antecipadas hoje</div>
+      </div>
+    </div>
+  </div>
+
+  {% if session.usuario_perfil != 'consulta' %}
+    <div class="card mb-4">
+      <div class="card-body">
+        <h2 class="h6 fw-bold mb-3">Atalhos rápidos</h2>
+        <div class="d-flex flex-wrap gap-2">
+          {% if session.usuario_perfil in ('administrador', 'rh') %}
+            <a href="{{ url_for('novo_funcionario') }}" class="btn btn-outline-primary btn-sm">
+              <i class="bi bi-person-plus me-1"></i> Novo funcionário
+            </a>
+          {% endif %}
+          {% if session.usuario_perfil in ('administrador', 'rh', 'direcao') %}
+            <a href="{{ url_for('relatorios') }}" class="btn btn-outline-primary btn-sm">
+              <i class="bi bi-file-earmark-bar-graph me-1"></i> Relatórios
+            </a>
+            <a href="{{ url_for('relatorios', visao='banco_horas') }}" class="btn btn-outline-primary btn-sm">
+              <i class="bi bi-piggy-bank me-1"></i> Banco de horas
+            </a>
+          {% endif %}
+          {% if session.usuario_perfil in ('administrador', 'rh') %}
+            <a href="{{ url_for('ajustes_ponto') }}" class="btn btn-outline-primary btn-sm">
+              <i class="bi bi-pencil-square me-1"></i> Ajustes de Ponto
+            </a>
+          {% endif %}
+          {% if session.usuario_perfil == 'administrador' %}
+            <a href="{{ url_for('backup') }}" class="btn btn-outline-primary btn-sm">
+              <i class="bi bi-shield-check me-1"></i> Backup
+            </a>
+            <a href="{{ url_for('configuracoes') }}" class="btn btn-outline-primary btn-sm">
+              <i class="bi bi-gear me-1"></i> Configurações
+            </a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  {% endif %}
+
+  <div class="row g-3">
+    <div class="{{ 'col-lg-7' if session.usuario_perfil != 'consulta' else 'col-12' }}">
+      <div class="card h-100">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2 class="h6 fw-bold mb-0">Presença nos últimos {{ periodo_grafico }} dias</h2>
+            <div class="btn-group btn-group-sm" role="group">
+              <a href="{{ url_for('dashboard', periodo_grafico=7) }}"
+                 class="btn btn-outline-secondary {{ 'active' if periodo_grafico == 7 else '' }}">7 dias</a>
+              <a href="{{ url_for('dashboard', periodo_grafico=30) }}"
+                 class="btn btn-outline-secondary {{ 'active' if periodo_grafico == 30 else '' }}">30 dias</a>
+            </div>
+          </div>
+          {% if indicadores.total_ativos == 0 %}
+            <p class="text-secondary mb-0">Cadastre funcionários para acompanhar a presença aqui.</p>
+          {% else %}
+            <div class="grafico-presenca">
+              {% for dia in presenca_semana %}
+                <div class="grafico-presenca-coluna"
+                     title="{{ dia.presentes }} de {{ dia.total }} presentes ({{ dia.percentual }}%)">
+                  <div class="grafico-presenca-barra" style="height: {{ dia.percentual }}%;"></div>
+                  <span class="grafico-presenca-legenda">{{ dia.data.strftime('%d/%m') }}</span>
+                </div>
+              {% endfor %}
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    {% if session.usuario_perfil != 'consulta' %}
+      <div class="col-lg-5">
+        <div class="card h-100">
+          <div class="card-body">
+            <h2 class="h6 fw-bold mb-3">Último ponto registrado</h2>
+            {% if indicadores.ultimo_ponto %}
+              {% set u = indicadores.ultimo_ponto %}
+              <div class="d-flex align-items-center gap-3">
+                {{ avatar(u, tamanho=56) }}
+                <div class="flex-grow-1">
+                  <div class="fw-semibold">{{ u.nome }}</div>
+                  <div class="text-secondary small">{{ u.cargo }}</div>
+                </div>
+                <div class="text-end">
+                  <span class="badge rounded-pill {{ 'text-bg-success' if u.tipo == 'entrada' else 'text-bg-secondary' }}">
+                    {{ "Entrada" if u.tipo == "entrada" else "Saída" }}
+                  </span>
+                  <div class="small text-secondary mt-1">{{ u.timestamp[11:16] }}</div>
+                </div>
+              </div>
+            {% else %}
+              <p class="text-secondary mb-0">Ninguém bateu o ponto ainda hoje.</p>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+
+  {% if presenca_setor %}
+    <div class="row g-3 mt-1">
+      <div class="col-12">
+        <div class="card h-100">
+          <div class="card-body">
+            <h2 class="h6 fw-bold mb-3">Presença por setor (últimos {{ periodo_grafico }} dias)</h2>
+            <div class="grafico-presenca">
+              {% for s in presenca_setor %}
+                <div class="grafico-presenca-coluna" title="{{ s.percentual }}% dos dias com pelo menos 1 registro">
+                  <div class="grafico-presenca-barra" style="height: {{ s.percentual }}%;"></div>
+                  <span class="grafico-presenca-legenda">{{ s.setor_nome }}</span>
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+
+  <div class="row g-3 mt-1">
+    <div class="col-12">
+      <div class="card h-100">
+        <div class="card-body">
+          <h2 class="h6 fw-bold mb-3">Comparativo mensal (últimos {{ comparativo_mensal|length }} meses)</h2>
+          <div class="grafico-canvas-wrapper"><canvas id="grafico-comparativo-mensal"></canvas></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% if session.usuario_perfil != 'consulta' %}
+    <div class="row g-3 mt-1">
+      <div class="col-12">
+        <div class="card h-100">
+          <div class="card-body">
+            <h2 class="h6 fw-bold mb-3">Ranking de pontualidade (últimos {{ periodo_grafico }} dias)</h2>
+            {% if ranking_atrasos %}
+              <div class="grafico-canvas-wrapper"><canvas id="grafico-ranking-atrasos"></canvas></div>
+            {% else %}
+              <p class="text-secondary mb-0">Ninguém com atraso registrado nos últimos {{ periodo_grafico }} dias.</p>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+
+  <script type="application/json" id="dashboard-graficos-dados">
+    {
+      "corPrimaria": {{ (cor_primaria or '#1E40AF') | tojson }},
+      "comparativoMensal": {{ comparativo_mensal | tojson }}
+      {% if session.usuario_perfil != 'consulta' %}, "rankingAtrasos": {{ ranking_atrasos | tojson }}{% endif %}
+    }
+  </script>
+{% endblock %}
+
+{% block js_extra %}
+  <script src="{{ url_for('static', filename='vendor/chartjs/chart.umd.min.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/dashboard-graficos.js') }}"></script>
+{% endblock %}

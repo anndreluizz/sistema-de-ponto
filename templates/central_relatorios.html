@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% from "_macros.html" import cabecalho_relatorio %}
+{% block titulo %}Central de Relatórios{% endblock %}
+{% block conteudo %}
+  {{ cabecalho_relatorio(config, "Central de Relatórios", nomes_visao[visao] ~ " — " ~ data_inicio ~ " a " ~ data_fim) }}
+
+  <form method="get" class="card mb-3 sem-impressao">
+    <div class="card-body">
+      <div class="row g-2 align-items-end">
+        <div class="col-md-3">
+          <label class="form-label">De</label>
+          <input type="date" name="data_inicio" class="form-control" value="{{ data_inicio }}">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Até</label>
+          <input type="date" name="data_fim" class="form-control" value="{{ data_fim }}">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Agrupar por</label>
+          <select name="agrupar_por" class="form-select">
+            <option value="funcionario" {{ "selected" if agrupar_por == "funcionario" else "" }}>Funcionário</option>
+            <option value="setor" {{ "selected" if agrupar_por == "setor" else "" }}>Setor</option>
+            <option value="cargo" {{ "selected" if agrupar_por == "cargo" else "" }}>Cargo</option>
+            <option value="turno" {{ "selected" if agrupar_por == "turno" else "" }}>Turno</option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Visão</label>
+          <select name="visao" class="form-select">
+            {% for chave, rotulo in nomes_visao.items() %}
+              <option value="{{ chave }}" {{ "selected" if visao == chave else "" }}>{{ rotulo }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-2">
+          <button type="submit" class="btn btn-primary w-100"><i class="bi bi-funnel me-1"></i>Filtrar</button>
+        </div>
+      </div>
+
+      <div class="d-flex flex-wrap gap-2 mt-3">
+        {% for chave, rotulo in [("hoje", "Hoje"), ("semana", "Esta semana"), ("mes", "Este mês"), ("ano", "Este ano")] %}
+          <a class="btn btn-sm btn-outline-secondary"
+             href="{{ url_for('relatorios', data_inicio=atalhos[chave][0].isoformat(), data_fim=atalhos[chave][1].isoformat(), agrupar_por=agrupar_por, visao=visao, funcionario_id=funcionario_id) }}">
+            {{ rotulo }}
+          </a>
+        {% endfor %}
+      </div>
+
+      <div class="d-flex flex-wrap gap-2 mt-3">
+        <a class="btn btn-outline-secondary btn-sm"
+           href="{{ url_for('relatorios_exportar_pdf', data_inicio=data_inicio, data_fim=data_fim, agrupar_por=agrupar_por, visao=visao, funcionario_id=funcionario_id) }}">
+          <i class="bi bi-file-earmark-pdf me-1"></i>Exportar PDF
+        </a>
+        <a class="btn btn-outline-secondary btn-sm"
+           href="{{ url_for('relatorios_exportar_excel', data_inicio=data_inicio, data_fim=data_fim, agrupar_por=agrupar_por, visao=visao, funcionario_id=funcionario_id) }}">
+          <i class="bi bi-file-earmark-excel me-1"></i>Exportar Excel
+        </a>
+        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.print()">
+          <i class="bi bi-printer me-1"></i>Imprimir
+        </button>
+      </div>
+    </div>
+  </form>
+
+  <div class="card">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead>
+          <tr>
+            <th>{{ {"funcionario": "Funcionário", "setor": "Setor", "cargo": "Cargo", "turno": "Turno"}.get(agrupar_por, "Funcionário") }}</th>
+            {% if visao == "frequencia" %}
+              <th>Dias com ponto</th><th>Faltas</th><th>Atrasos</th><th>Horas trabalhadas</th>
+            {% elif visao == "faltas" %}
+              <th>Dias úteis</th><th>Faltas</th><th>% de faltas</th>
+            {% elif visao == "atrasos" %}
+              <th>Dias com ponto</th><th>Atrasos</th><th>Atraso acumulado</th><th>Saídas antecipadas</th>
+            {% elif visao == "horas_extras" %}
+              <th>Horas trabalhadas</th><th>Horas esperadas</th><th>Horas extras</th>
+            {% elif visao == "banco_horas" %}
+              <th>Horas trabalhadas</th><th>Horas esperadas</th><th>Saldo</th><th>Saldo acumulado</th>
+            {% elif visao == "ausencias" %}
+              <th>Atestados</th><th>Licenças</th><th>Férias</th><th>Folgas</th>
+              <th>Lic. maternidade/paternidade</th><th>Falecimento</th><th>Abono legal</th>
+            {% endif %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for linha in linhas %}
+            <tr>
+              <td>{{ linha.dimensao }}</td>
+              {% if visao == "frequencia" %}
+                <td>{{ linha.dias_com_ponto }}</td><td>{{ linha.faltas }}</td><td>{{ linha.atrasos }}</td><td>{{ linha.horas_trabalhadas }}</td>
+              {% elif visao == "faltas" %}
+                <td>{{ linha.dias_uteis }}</td><td>{{ linha.faltas }}</td><td>{{ linha.percentual_faltas }}%</td>
+              {% elif visao == "atrasos" %}
+                <td>{{ linha.dias_com_ponto }}</td><td>{{ linha.atrasos }}</td><td>{{ linha.atraso_acumulado }}</td><td>{{ linha.saidas_antecipadas }}</td>
+              {% elif visao == "horas_extras" %}
+                <td>{{ linha.horas_trabalhadas }}</td><td>{{ linha.horas_esperadas }}</td><td>{{ linha.horas_extras }}</td>
+              {% elif visao == "banco_horas" %}
+                <td>{{ linha.horas_trabalhadas }}</td><td>{{ linha.horas_esperadas }}</td><td>{{ linha.saldo }}</td><td>{{ linha.saldo_acumulado }}</td>
+              {% elif visao == "ausencias" %}
+                <td>{{ linha.atestados }}</td><td>{{ linha.licencas }}</td><td>{{ linha.ferias }}</td><td>{{ linha.folgas }}</td>
+                <td>{{ linha.licencas_maternidade_paternidade }}</td><td>{{ linha.falecimentos }}</td><td>{{ linha.abonos_legais }}</td>
+              {% endif %}
+            </tr>
+          {% else %}
+            <tr><td colspan="5" class="text-secondary text-center py-4">Nenhum dado encontrado para esse filtro.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+{% endblock %}

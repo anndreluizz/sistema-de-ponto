@@ -1,0 +1,9 @@
+# Dependência SOMENTE de desenvolvimento (testes automatizados).
+# NAO é instalada pelo iniciar.bat nem necessária para rodar o sistema.
+#
+# Instalar manualmente (uma vez), a partir da raiz do projeto:
+#   venv\Scripts\python.exe -m pip install -r requirements-dev.txt
+#
+# Rodar os testes (sempre a partir da raiz do projeto):
+#   venv\Scripts\python.exe -m pytest
+pytest==9.1.1

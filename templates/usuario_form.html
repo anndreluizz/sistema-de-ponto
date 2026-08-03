@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf_input %}
+{% block titulo %}{{ "Editar usuário" if usuario else "Novo usuário" }}{% endblock %}
+{% block conteudo %}
+  <form method="post" class="card" style="max-width: 480px;">
+    {{ csrf_input() }}
+    <div class="card-body">
+      <h1 class="h4 fw-bold mb-4">{{ "Editar usuário" if usuario else "Novo usuário" }}</h1>
+
+      <div class="mb-3">
+        <label class="form-label">Nome</label>
+        <input type="text" name="nome" class="form-control" value="{{ usuario.nome if usuario else '' }}" required>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">Usuário (login)</label>
+        <input type="text" name="usuario" class="form-control" value="{{ usuario.usuario if usuario else '' }}"
+               {{ "readonly" if usuario else "required" }}>
+        {% if usuario %}<div class="form-text">O login não pode ser alterado depois de criado.</div>{% endif %}
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">Perfil</label>
+        <select name="perfil" class="form-select" required>
+          {% for chave in perfis_validos %}
+            <option value="{{ chave }}" {{ "selected" if (usuario.perfil if usuario else "consulta") == chave else "" }}>
+              {{ nomes_perfil.get(chave, chave) }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      {% if not usuario %}
+        <div class="mb-3">
+          <label class="form-label">Senha</label>
+          <input type="password" name="senha" class="form-control" minlength="6" required>
+        </div>
+      {% endif %}
+
+      <div class="d-flex gap-2 mt-4">
+        <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Salvar</button>
+        <a href="{{ url_for('usuarios') }}" class="btn btn-outline-secondary">Cancelar</a>
+      </div>
+    </div>
+  </form>
+{% endblock %}

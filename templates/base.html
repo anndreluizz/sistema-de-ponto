@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block titulo %}{{ titulo_pagina }}{% endblock %} - Ponto Eletrônico</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap/bootstrap.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap-icons/bootstrap-icons.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/inter/fonts.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+  {% if cor_primaria %}
+  <style>
+    :root {
+      --bs-primary: {{ cor_primaria }};
+      --bs-primary-rgb: {{ cor_primaria_rgb }};
+    }
+    .sidebar { background: linear-gradient(180deg, #0f1f4d, {{ cor_primaria }}); }
+    .card-indicador .bg-icone-primary { color: {{ cor_primaria }}; }
+  </style>
+  {% endif %}
+  {% block cabecalho_extra %}{% endblock %}
+</head>
+<body>
+  {% include "_sidebar.html" %}
+
+  <div class="conteudo-principal">
+    <header class="topbar sem-impressao">
+      <button class="topbar-menu-mobile" id="botao-abrir-sidebar" type="button" title="Abrir menu">
+        <i class="bi bi-list"></i>
+      </button>
+
+      <nav aria-label="breadcrumb" class="topbar-breadcrumb">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}"><i class="bi bi-house-door"></i></a></li>
+          {% for rotulo, endpoint in trilha_breadcrumb %}
+            <li class="breadcrumb-item"><a href="{{ url_for(endpoint) }}">{{ rotulo }}</a></li>
+          {% endfor %}
+          <li class="breadcrumb-item active" aria-current="page">{{ titulo_pagina }}</li>
+        </ol>
+      </nav>
+
+      <div class="topbar-relogio">
+        <span id="topbar-hora"></span>
+        <span id="topbar-data" class="topbar-data-completa"></span>
+      </div>
+
+      {% if session.usuario_perfil in ('administrador', 'rh') %}
+        <div class="dropdown">
+          <button class="topbar-conta dropdown-toggle position-relative" data-bs-toggle="dropdown" type="button" title="Avisos">
+            <i class="bi bi-bell"></i>
+            {% if notificacoes %}
+              <span class="badge rounded-pill bg-danger position-absolute top-0 start-100 translate-middle" style="font-size:0.6rem;">
+                {{ notificacoes|length }}
+              </span>
+            {% endif %}
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end" style="min-width: 320px;">
+            {% for aviso in notificacoes %}
+              <li>
+                <a class="dropdown-item d-flex align-items-start gap-2 py-2" href="{{ aviso.link }}">
+                  <i class="bi {{ aviso.icone }} mt-1"></i>
+                  <span class="small">{{ aviso.texto }}</span>
+                </a>
+              </li>
+              {% if not loop.last %}<li><hr class="dropdown-divider"></li>{% endif %}
+            {% else %}
+              <li><span class="dropdown-item-text small text-secondary">Nenhum aviso no momento.</span></li>
+            {% endfor %}
+          </ul>
+        </div>
+      {% endif %}
+
+      <div class="dropdown">
+        <button class="topbar-conta dropdown-toggle" data-bs-toggle="dropdown" type="button" title="Conta">
+          <i class="bi bi-person-circle"></i>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end">
+          <li><a class="dropdown-item" href="{{ url_for('trocar_senha') }}"><i class="bi bi-key me-2"></i>Trocar senha</a></li>
+          <li><a class="dropdown-item" href="{{ url_for('kiosk') }}" target="_blank"><i class="bi bi-display me-2"></i>Ver totem</a></li>
+          <li><hr class="dropdown-divider"></li>
+          <li><a class="dropdown-item text-danger" href="{{ url_for('logout') }}"><i class="bi bi-box-arrow-right me-2"></i>Sair</a></li>
+        </ul>
+      </div>
+    </header>
+
+    <main class="pagina-conteudo">
+      {% block conteudo %}{% endblock %}
+    </main>
+  </div>
+
+  <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1080;">
+    {% with mensagens = get_flashed_messages(with_categories=true) %}
+      {% for categoria, mensagem in mensagens %}
+        <div class="toast align-items-center text-bg-{{ 'success' if categoria == 'sucesso' else 'danger' }} border-0"
+             role="alert" data-bs-autohide="true" data-bs-delay="5000">
+          <div class="d-flex">
+            <div class="toast-body">
+              <i class="bi {{ 'bi-check-circle' if categoria == 'sucesso' else 'bi-exclamation-triangle' }} me-2"></i>
+              {{ mensagem }}
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+          </div>
+        </div>
+      {% endfor %}
+    {% endwith %}
+  </div>
+
+  <div class="modal fade" id="modal-confirmar" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-exclamation-triangle text-warning me-2"></i>Confirmar ação</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body" id="modal-confirmar-texto"></div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-danger" id="modal-confirmar-botao">Confirmar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='vendor/bootstrap/bootstrap.bundle.min.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+  {% block js_extra %}{% endblock %}
+</body>
+</html>

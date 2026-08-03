@@ -1,0 +1,66 @@
+<aside class="sidebar sem-impressao">
+  <div class="sidebar-topo">
+    <i class="bi bi-fingerprint"></i>
+    <span class="sidebar-titulo">Ponto Eletrônico</span>
+  </div>
+
+  <nav class="sidebar-nav">
+    <a href="{{ url_for('dashboard') }}"
+       class="{{ 'active' if request.endpoint == 'dashboard' else '' }}">
+      <i class="bi bi-speedometer2"></i><span>Dashboard</span>
+    </a>
+
+    {% if session.usuario_perfil in ('administrador', 'rh', 'direcao') %}
+      <a href="{{ url_for('funcionarios') }}"
+         class="{{ 'active' if request.endpoint in ('funcionarios', 'novo_funcionario', 'editar_funcionario') else '' }}">
+        <i class="bi bi-people"></i><span>Funcionários</span>
+      </a>
+      <a href="{{ url_for('relatorios') }}"
+         class="{{ 'active' if request.endpoint == 'relatorios' else '' }}">
+        <i class="bi bi-bar-chart-line"></i><span>Relatórios</span>
+      </a>
+    {% endif %}
+
+    {% if session.usuario_perfil in ('administrador', 'rh') %}
+      <a href="{{ url_for('ajustes_ponto') }}"
+         class="{{ 'active' if request.endpoint == 'ajustes_ponto' else '' }}">
+        <i class="bi bi-pencil-square"></i><span>Ajustes de Ponto</span>
+      </a>
+      <a href="{{ url_for('setores') }}"
+         class="{{ 'active' if request.endpoint == 'setores' else '' }}">
+        <i class="bi bi-diagram-3"></i><span>Setores</span>
+      </a>
+      <a href="{{ url_for('turnos') }}"
+         class="{{ 'active' if request.endpoint == 'turnos' else '' }}">
+        <i class="bi bi-clock-history"></i><span>Turnos</span>
+      </a>
+      <a href="{{ url_for('escalas') }}"
+         class="{{ 'active' if request.endpoint == 'escalas' else '' }}">
+        <i class="bi bi-arrow-repeat"></i><span>Escalas</span>
+      </a>
+    {% endif %}
+
+    {% if session.usuario_perfil == 'administrador' %}
+      <a href="{{ url_for('configuracoes') }}"
+         class="{{ 'active' if request.endpoint == 'configuracoes' else '' }}">
+        <i class="bi bi-gear"></i><span>Configurações</span>
+      </a>
+      <a href="{{ url_for('usuarios') }}"
+         class="{{ 'active' if request.endpoint in ('usuarios', 'novo_usuario', 'editar_usuario') else '' }}">
+        <i class="bi bi-person-badge"></i><span>Usuários</span>
+      </a>
+      <a href="{{ url_for('auditoria') }}"
+         class="{{ 'active' if request.endpoint == 'auditoria' else '' }}">
+        <i class="bi bi-shield-check"></i><span>Auditoria</span>
+      </a>
+      <a href="{{ url_for('backup') }}"
+         class="{{ 'active' if request.endpoint == 'backup' else '' }}">
+        <i class="bi bi-cloud-arrow-down"></i><span>Backup</span>
+      </a>
+    {% endif %}
+  </nav>
+
+  <button class="sidebar-toggle" id="botao-recolher-sidebar" type="button" title="Recolher menu">
+    <i class="bi bi-chevron-left"></i>
+  </button>
+</aside>

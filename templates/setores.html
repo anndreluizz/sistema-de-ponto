@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf_input %}
+{% block titulo %}Setores{% endblock %}
+{% block conteudo %}
+  <div class="row g-4">
+    <div class="col-lg-5">
+      <div class="card">
+        <div class="card-body">
+          <h2 class="h6 fw-bold mb-3"><i class="bi bi-plus-circle me-1"></i>Novo setor</h2>
+          <form method="post" class="d-flex flex-column gap-2">
+            {{ csrf_input() }}
+            <input type="text" name="nome" class="form-control" placeholder="Nome do setor" required>
+            <div class="row g-2">
+              <div class="col-8">
+                <label class="form-label small mb-1">Ícone</label>
+                <select name="icone" class="form-select">
+                  <option value="">Nenhum</option>
+                  {% for valor, rotulo in icones_disponiveis %}
+                    <option value="{{ valor }}">{{ rotulo }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-4">
+                <label class="form-label small mb-1">Cor</label>
+                <input type="color" name="cor" class="form-control form-control-color w-100" value="#1E40AF">
+              </div>
+            </div>
+            <div>
+              <label class="form-label small mb-1">Responsável</label>
+              <input type="text" name="responsavel" class="form-control" placeholder="Nome do responsável pelo setor">
+            </div>
+            <div>
+              <label class="form-label small mb-1">Centro de custo</label>
+              <input type="text" name="centro_custo" class="form-control" placeholder="Opcional">
+            </div>
+            <button type="submit" class="btn btn-primary mt-1"><i class="bi bi-plus-lg me-1"></i>Adicionar</button>
+          </form>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-7">
+      <div class="card">
+        <div class="card-body">
+          <h2 class="h6 fw-bold mb-3">Setores cadastrados</h2>
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead>
+                <tr>
+                  <th>Setor</th><th>Responsável</th><th>Centro de custo</th><th>Func.</th>
+                  <th class="text-end">Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for s in setores %}
+                <tr>
+                  <td>
+                    <div class="d-flex align-items-center gap-2">
+                      <span class="icone-setor" style="background: {{ (s.cor or '#94a3b8') }}22; color: {{ s.cor or '#64748b' }};">
+                        <i class="bi {{ s.icone or 'bi-building' }}"></i>
+                      </span>
+                      <span>{{ s.nome }}</span>
+                    </div>
+                  </td>
+                  <td>{{ s.responsavel or "-" }}</td>
+                  <td>{{ s.centro_custo or "-" }}</td>
+                  <td>{{ s.total_funcionarios }}</td>
+                  <td class="text-end">
+                    <details class="d-inline-block">
+                      <summary class="btn btn-sm btn-outline-secondary" title="Editar">
+                        <i class="bi bi-pencil"></i>
+                      </summary>
+                      <form method="post" action="{{ url_for('editar_setor', setor_id=s.id) }}"
+                            class="d-flex flex-column gap-2 mt-2 p-2 border rounded bg-light text-start">
+                        {{ csrf_input() }}
+                        <input type="text" name="nome" value="{{ s.nome }}" class="form-control form-control-sm" placeholder="Nome">
+                        <div class="d-flex gap-2">
+                          <select name="icone" class="form-select form-select-sm">
+                            <option value="">Nenhum</option>
+                            {% for valor, rotulo in icones_disponiveis %}
+                              <option value="{{ valor }}" {{ "selected" if s.icone == valor else "" }}>{{ rotulo }}</option>
+                            {% endfor %}
+                          </select>
+                          <input type="color" name="cor" class="form-control form-control-color form-control-sm"
+                                 value="{{ s.cor or '#1E40AF' }}">
+                        </div>
+                        <input type="text" name="responsavel" value="{{ s.responsavel or '' }}"
+                               class="form-control form-control-sm" placeholder="Responsável">
+                        <input type="text" name="centro_custo" value="{{ s.centro_custo or '' }}"
+                               class="form-control form-control-sm" placeholder="Centro de custo">
+                        <button type="submit" class="btn btn-sm btn-primary">Salvar</button>
+                      </form>
+                    </details>
+                    <form method="post" action="{{ url_for('excluir_setor', setor_id=s.id) }}"
+                          class="form-confirmar d-inline" data-confirmar="Excluir o setor '{{ s.nome }}'?">
+                      {{ csrf_input() }}
+                      <button type="submit" class="btn btn-sm btn-outline-danger" title="Excluir">
+                        <i class="bi bi-trash"></i>
+                      </button>
+                    </form>
+                  </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="5" class="text-secondary">Nenhum setor cadastrado ainda.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}

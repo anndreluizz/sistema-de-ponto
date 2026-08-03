@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf_input %}
+{% block titulo %}{{ "Editar funcionário" if funcionario else "Novo funcionário" }}{% endblock %}
+{% block conteudo %}
+  {% set foto_padrao = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23e5e9ee'/><circle cx='50' cy='38' r='18' fill='%23aab2bd'/><path d='M50 62c-22 0-34 12-34 26v6h68v-6c0-14-12-26-34-26z' fill='%23aab2bd'/></svg>" %}
+
+  <form method="post" enctype="multipart/form-data" class="card">
+    {{ csrf_input() }}
+    <div class="card-body p-4">
+      <h1 class="h4 fw-bold mb-4">{{ "Editar funcionário" if funcionario else "Novo funcionário" }}</h1>
+
+      <div class="d-flex align-items-center gap-3 mb-4">
+        <img id="preview-foto" class="preview-foto"
+             src="{{ url_for('static', filename=funcionario.foto) if funcionario and funcionario.foto else foto_padrao }}"
+             alt="Foto do funcionário">
+        <div>
+          <label class="form-label mb-1 d-block">Foto do funcionário</label>
+          <input type="file" name="foto" id="input-foto" class="form-control form-control-sm" accept=".png,.jpg,.jpeg,.webp">
+        </div>
+      </div>
+
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label">Nome completo *</label>
+          <input type="text" name="nome" class="form-control" required value="{{ funcionario.nome if funcionario else '' }}">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Cargo</label>
+          <input type="text" name="cargo" class="form-control" value="{{ funcionario.cargo if funcionario else '' }}">
+        </div>
+
+        <div class="col-md-4">
+          <label class="form-label">CPF</label>
+          <input type="text" name="cpf" class="form-control" placeholder="000.000.000-00"
+                 value="{{ funcionario.cpf if funcionario else '' }}">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Matrícula</label>
+          <input type="text" name="matricula" class="form-control"
+                 value="{{ funcionario.matricula if funcionario else matricula_sugerida }}">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Situação</label>
+          {% set situacao_atual = funcionario.situacao if funcionario else "ativo" %}
+          <select name="situacao" class="form-select">
+            <option value="ativo" {{ "selected" if situacao_atual == "ativo" else "" }}>Ativo</option>
+            <option value="inativo" {{ "selected" if situacao_atual == "inativo" else "" }}>Inativo</option>
+            <option value="ferias" {{ "selected" if situacao_atual == "ferias" else "" }}>Férias</option>
+            <option value="afastado" {{ "selected" if situacao_atual == "afastado" else "" }}>Afastado</option>
+          </select>
+        </div>
+
+        <div class="col-md-6">
+          <label class="form-label">RG</label>
+          <input type="text" name="rg" class="form-control" value="{{ funcionario.rg if funcionario else '' }}">
+        </div>
+        {% if session.usuario_perfil == 'administrador' %}
+          <div class="col-md-6">
+            <label class="form-label">Salário</label>
+            <input type="text" name="salario" class="form-control" placeholder="R$ 0,00"
+                   value="{{ funcionario.salario if funcionario else '' }}">
+            <div class="form-text mt-0">Visível só para Administrador.</div>
+          </div>
+        {% endif %}
+
+        <div class="col-md-6">
+          <label class="form-label d-flex justify-content-between">
+            <span>Setor</span>
+            <a href="{{ url_for('setores') }}" class="small">Gerenciar setores</a>
+          </label>
+          <select name="setor_id" class="form-select">
+            <option value="">Nenhum</option>
+            {% for s in setores %}
+              <option value="{{ s.id }}" {{ "selected" if funcionario and funcionario.setor_id == s.id else "" }}>{{ s.nome }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-12">
+          <label class="form-label d-flex justify-content-between">
+            <span>Agenda de trabalho</span>
+            <a href="{{ url_for('turnos') }}" class="small">Gerenciar turnos</a>
+          </label>
+          {% set modo_atual = 'escala' if funcionario and funcionario.escala_id else ('turno' if funcionario and funcionario.turno_id else 'nenhum') %}
+          <div class="btn-group w-100 mb-2" role="group">
+            <input type="radio" class="btn-check" name="modo_agenda" id="modo-nenhum" value="nenhum" autocomplete="off"
+                   {{ "checked" if modo_atual == "nenhum" else "" }}>
+            <label class="btn btn-outline-secondary" for="modo-nenhum">Sem agenda fixa</label>
+
+            <input type="radio" class="btn-check" name="modo_agenda" id="modo-turno" value="turno" autocomplete="off"
+                   {{ "checked" if modo_atual == "turno" else "" }}>
+            <label class="btn btn-outline-secondary" for="modo-turno">Turno fixo</label>
+
+            <input type="radio" class="btn-check" name="modo_agenda" id="modo-escala" value="escala" autocomplete="off"
+                   {{ "checked" if modo_atual == "escala" else "" }}>
+            <label class="btn btn-outline-secondary" for="modo-escala">Escala (rotação)</label>
+          </div>
+
+          <div id="bloco-agenda-turno" class="{{ '' if modo_atual == 'turno' else 'd-none' }}">
+            <select name="turno_id" class="form-select">
+              <option value="">Selecione um turno</option>
+              {% for t in turnos %}
+                <option value="{{ t.id }}" {{ "selected" if funcionario and funcionario.turno_id == t.id else "" }}>{{ t.nome }} ({{ t.horario_entrada }}–{{ t.horario_saida }})</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div id="bloco-agenda-escala" class="row g-2 {{ '' if modo_atual == 'escala' else 'd-none' }}">
+            <div class="col-md-8">
+              <select name="escala_id" class="form-select">
+                <option value="">Selecione uma escala</option>
+                {% for e in escalas %}
+                  <option value="{{ e.id }}" {{ "selected" if funcionario and funcionario.escala_id == e.id else "" }}>{{ e.nome }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-4">
+              <input type="date" name="escala_data_referencia" class="form-control"
+                     value="{{ funcionario.escala_data_referencia if funcionario else '' }}">
+            </div>
+            <div class="col-12 form-text mt-0">
+              A data de referência é um dia em que essa pessoa trabalha — define a fase do rodízio dela dentro do ciclo da escala.
+            </div>
+            {% if not escalas %}
+              <div class="col-12 text-secondary small">Nenhuma escala cadastrada — <a href="{{ url_for('escalas') }}">crie uma primeiro</a>.</div>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="col-md-6">
+          <label class="form-label">Telefone</label>
+          <input type="text" name="telefone" class="form-control" value="{{ funcionario.telefone if funcionario else '' }}">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">E-mail</label>
+          <input type="email" name="email" class="form-control" value="{{ funcionario.email if funcionario else '' }}">
+        </div>
+
+        <div class="col-md-6">
+          <label class="form-label">Data de admissão</label>
+          <input type="date" name="data_admissao" class="form-control" value="{{ funcionario.data_admissao if funcionario else '' }}">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label d-flex justify-content-between">
+            <span>Banco de horas ativo a partir de</span>
+          </label>
+          <input type="date" name="banco_horas_inicio" class="form-control"
+                 value="{{ funcionario.banco_horas_inicio if funcionario else '' }}">
+          <div class="form-text mt-0">Deixe em branco para não acumular banco de horas para essa pessoa.</div>
+        </div>
+
+        <div class="col-12">
+          <label class="form-label">Observações</label>
+          <textarea name="observacoes" class="form-control" rows="3">{{ funcionario.observacoes if funcionario else '' }}</textarea>
+        </div>
+      </div>
+
+      <div class="d-flex gap-2 mt-4">
+        <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Salvar</button>
+        <a href="{{ url_for('funcionarios') }}" class="btn btn-outline-secondary">Cancelar</a>
+      </div>
+    </div>
+  </form>
+
+  {% if funcionario %}
+    <div class="card mt-3">
+      <div class="card-body">
+        <h2 class="h6 fw-bold mb-3">Documentos</h2>
+        <div class="table-responsive mb-3">
+          <table class="table table-sm table-hover align-middle mb-0">
+            <thead><tr><th>Arquivo</th><th>Tipo</th><th>Data</th><th class="text-end">Ações</th></tr></thead>
+            <tbody>
+              {% for d in documentos %}
+                <tr>
+                  <td>{{ d.nome_arquivo }}</td>
+                  <td>{{ d.tipo or "-" }}</td>
+                  <td class="small text-secondary">{{ d.criado_em[:10] }}</td>
+                  <td class="text-end">
+                    <a href="{{ url_for('baixar_documento', documento_id=d.id) }}" class="btn btn-sm btn-outline-secondary" title="Baixar">
+                      <i class="bi bi-download"></i>
+                    </a>
+                    <form method="post" action="{{ url_for('excluir_documento', documento_id=d.id) }}"
+                          class="form-confirmar d-inline" data-confirmar="Excluir o documento '{{ d.nome_arquivo }}'?">
+                      {{ csrf_input() }}
+                      <button type="submit" class="btn btn-sm btn-outline-danger" title="Excluir">
+                        <i class="bi bi-trash"></i>
+                      </button>
+                    </form>
+                  </td>
+                </tr>
+              {% else %}
+                <tr><td colspan="4" class="text-secondary text-center py-3">Nenhum documento anexado ainda.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <form method="post" action="{{ url_for('nova_documento_funcionario', funcionario_id=funcionario.id) }}"
+              enctype="multipart/form-data" class="row g-2 align-items-end">
+          {{ csrf_input() }}
+          <div class="col-md-4">
+            <label class="form-label small mb-1">Arquivo (PDF, JPG, PNG ou WEBP)</label>
+            <input type="file" name="arquivo" class="form-control form-control-sm" accept=".pdf,.png,.jpg,.jpeg,.webp" required>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label small mb-1">Tipo (opcional)</label>
+            <input type="text" name="tipo" class="form-control form-control-sm" placeholder="Ex: RG, CTPS, Comprovante">
+          </div>
+          <div class="col-md-4">
+            <button type="submit" class="btn btn-outline-primary btn-sm w-100"><i class="bi bi-paperclip me-1"></i>Anexar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  {% endif %}
+{% endblock %}
+{% block js_extra %}
+  <script src="{{ url_for('static', filename='js/funcionario_form.js') }}"></script>
+{% endblock %}

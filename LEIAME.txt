@@ -1,0 +1,216 @@
+SISTEMA DE PONTO ELETRONICO DA ESCOLA
+======================================
+
+O QUE É
+-------
+Sistema local (roda no computador da escola, sem precisar de internet) para os
+funcionarios baterem o ponto com um cracha de QR Code, substituindo o caderno
+de assinaturas. Cada leitura grava automaticamente a data e hora reais no
+computador, e alterna sozinho entre "entrada" e "saida". Além do totem, o
+sistema tem um painel administrativo completo: dashboard, cadastro de
+funcionarios, relatorios, ajustes de ponto com justificativas, perfis de
+usuario, auditoria e backup.
+
+
+COMO USAR PELA PRIMEIRA VEZ
+----------------------------
+1. De dois cliques no arquivo "iniciar.bat".
+   - Na primeira vez, ele vai demorar um pouco mais (instalando os programas
+     necessarios). Nas proximas vezes é rapido.
+   - Vai abrir uma janela preta chamada "Servidor - Sistema de Ponto" — essa
+     janela PRECISA continuar aberta o dia todo (pode minimizar, so nao feche).
+   - O navegador vai abrir sozinho na tela do totem.
+
+2. No navegador, va em "Area administrativa" (o iconezinho de engrenagem no
+   canto inferior direito da tela do totem) e entre com o login padrao:
+
+       usuario: admin
+       senha:   admin123
+
+   IMPORTANTE: troque essa senha assim que possivel, no menu "Trocar senha"
+   (dropdown com seu nome, no canto superior direito).
+
+3. Cadastre os funcionarios em "Funcionarios" (nome, cargo, setor, turno, foto
+   etc). Depois de cadastrar, clique em "Ver cracha" para gerar o cracha com
+   o QR Code da pessoa. Imprima e, se possivel, plastifique.
+
+
+USO NO DIA A DIA (TOTEM)
+--------------------------
+- Deixe o computador/tablet da entrada sempre na tela do totem (endereço
+  http://127.0.0.1:5000/), com o botao "Iniciar" ja tocado (camera ligada).
+- Cada funcionario aproxima o cracha da camera. O sistema reconhece sozinho
+  se é entrada ou saida (nao precisa escolher).
+- Para tirar a tela do totem do modo tela cheia, aperte a tecla ESC.
+
+
+PERFIS DE USUARIO
+--------------------
+O sistema tem 4 perfis, cada um com um nivel de acesso (menu "Usuarios",
+so visivel para Administrador):
+
+- Administrador: acesso total (cadastros, relatorios, ajustes de ponto,
+  configuracoes, usuarios, auditoria e backup).
+- RH: cadastra e edita funcionarios/setores/turnos, ajusta pontos e
+  justificativas, ve relatorios. Nao mexe em configuracoes, usuarios ou
+  backup.
+- Direcao: ve o dashboard e todos os relatorios, mas nao edita nada.
+- Consulta: so ve o dashboard geral (numeros agregados, sem detalhe por
+  funcionario).
+
+Esqueceu a senha? Peça para um Administrador redefinir em "Usuarios". Se
+voce é o UNICO Administrador e perdeu a senha, veja "RECUPERACAO DE
+EMERGENCIA" mais abaixo.
+
+Por seguranca, depois de 5 tentativas de senha erradas seguidas, o login
+fica bloqueado por 15 minutos (mesmo com a senha certa). E, por
+inatividade, a sessao expira sozinha depois de 60 minutos sem uso — basta
+entrar de novo com usuario e senha.
+
+
+DASHBOARD, RELATORIOS E AJUSTES DE PONTO
+-------------------------------------------
+- "Dashboard": visao geral do dia — presentes, ausentes, atrasos, faltas,
+  quem esta em intervalo, saidas antecipadas, em ferias/licenca/atestado
+  hoje e as horas extras do dia. Tem grafico de presenca (alternando entre
+  7 e 30 dias) e grafico de presenca por setor, alem de atalhos rapidos
+  para as telas mais usadas. Mais embaixo, um grafico "Comparativo mensal"
+  mostra horas trabalhadas, faltas e atrasos dos ultimos 6 meses fechados
+  da escola inteira, e um "Ranking de pontualidade" (visivel pra quem edita
+  cadastros) mostra os funcionarios com mais atraso acumulado no periodo.
+- "Relatorios" (Central de Relatorios): resumos por periodo, agrupados por
+  funcionario/setor/cargo/turno, em 6 visoes (frequencia, faltas, atrasos,
+  horas extras, banco de horas, ausencias). Exporta em PDF, Excel ou
+  impressao.
+- "Ajustes de Ponto": tela do dia a dia — editar/excluir um registro,
+  lançar um ponto manual (quando alguem esquece de bater), e registrar
+  justificativas — um dia justificado deixa de contar como falta. Toda
+  criação/edição manual de um registro agora pede um motivo (aparece
+  como dica ao passar o mouse no selo "manual"). Tem um botao "Duplicar"
+  ao lado de cada registro pra agilizar o lançamento de um novo com o
+  mesmo funcionario/tipo. Os tipos de justificativa disponiveis sao:
+  atestado, licença, ferias, folga, licença maternidade/paternidade,
+  falecimento na familia (nojo), doação de sangue/serviço eleitoral e
+  outro — e da pra anexar o atestado (foto ou PDF) direto na justificativa.
+- Em "Funcionarios", cada pessoa tem um link de "Historico de ponto" com
+  o detalhe dia a dia (entrada, saida do almoço, retorno, saida, horas
+  extras), tambem exportavel. Nessa mesma tela da pra gerar o "Espelho de
+  Ponto" de um mes inteiro em PDF — documento com todos os dias do mes
+  (mesmo os sem registro), total de horas/extras, linhas de assinatura
+  (funcionario e gestor/RH) e um QR Code com codigo de verificacao (se os
+  dados do mes mudarem depois de emitido, o codigo muda, sinalizando
+  divergencia). Tambem tem "Historico de alteracoes" (quem editou o
+  cadastro dessa pessoa e quando).
+- No cadastro do funcionario agora tem RG e Salario — o Salario so
+  aparece e so pode ser editado por quem é Administrador; RH nem ve esse
+  campo. Tambem da pra anexar documentos (RG, CTPS, comprovante etc) no
+  cadastro — esses arquivos ficam guardados numa pasta separada que só
+  quem esta logado no sistema consegue baixar, e entram no backup normal.
+- Em "Setores", cada setor pode ter um icone, uma cor, um responsavel e um
+  centro de custo — so pra organizar melhor, nao afeta os relatorios.
+
+
+TURNOS, ESCALAS E BANCO DE HORAS
+------------------------------------
+- Em "Turnos", alem do horario de entrada/saida, agora da pra escolher em
+  quais dias da semana o turno vale, um intervalo de almoco (opcional) e
+  uma tolerancia tanto pra atraso na entrada quanto pra saida antecipada.
+- "Escalas" (menu novo) e pra quem trabalha em rodizio, tipo 12x36 ou
+  24x72 — nao tem dia fixo da semana, alterna "dias de trabalho" e "dias
+  de descanso" num ciclo. Pra criar uma escala, primeiro cadastre um turno
+  (com o horario do plantao) e depois a escala referencia esse turno,
+  informando quantos dias se trabalha e quantos dias se descansa no ciclo.
+  Ao colocar um funcionario numa escala, e preciso informar tambem uma
+  "data de referencia" — um dia em que ele trabalha, pra o sistema saber
+  em qual fase do rodizio essa pessoa esta (duas pessoas na mesma escala
+  costumam estar em fases opostas, cobrindo a folga uma da outra).
+- "Banco de horas": cada funcionario tem uma tela propria (menu de acoes
+  em "Funcionarios" → "Banco de horas") com o extrato dia a dia (horas
+  trabalhadas, esperadas, diferenca e saldo acumulado) e onde da pra
+  lancar uma compensacao manual (por exemplo, alguem saiu mais cedo com
+  autorizacao — isso abate do banco). O banco de horas so comeca a
+  acumular a partir da data que voce escolher no cadastro do funcionario
+  ("Banco de horas ativo a partir de") — se deixar em branco, fica
+  desativado pra essa pessoa e nao aparece nada nessa tela.
+
+
+BACKUP (IMPORTANTE)
+---------------------
+Menu "Backup" (so Administrador):
+- "Baixar backup agora": gera um .zip com o banco de dados, fotos, crachas
+  (QR Code) e logo — guarde esse arquivo num pendrive ou pasta na nuvem de
+  vez em quando (ex: uma vez por mes).
+- O sistema tambem gera sozinho um backup automatico (guarda os ultimos
+  14), listado na mesma tela. A frequencia é configuravel em
+  "Configuracoes" (a cada 6h, 12h, 24h, 48h ou uma vez por semana) — isso
+  so é verificado quando alguem acessa o sistema, entao se o computador
+  ficar muito tempo sem uso, o backup so roda no proximo acesso.
+- Ainda em "Configuracoes", da pra informar uma "pasta de destino extra" —
+  toda vez que um backup automatico for gerado, o sistema tambem copia o
+  arquivo pra essa pasta. É util se essa pasta ja for sincronizada por um
+  programa tipo OneDrive ou Google Drive (o sistema so copia o arquivo pra
+  pasta local do computador; quem sincroniza com a nuvem é o proprio
+  programa). A pasta precisa ja existir no computador.
+- "Restaurar backup": substitui TODOS os dados atuais pelos dados de um
+  arquivo de backup. Exige digitar a palavra RESTAURAR para confirmar, e o
+  sistema guarda uma copia de seguranca do estado atual antes de trocar
+  (arquivo "ponto.db.bak-antes-restaurar-<data>", nesta mesma pasta) — mas
+  use com cuidado, é dificil de desfazer.
+
+
+AVISOS DO SISTEMA (O SININHO)
+---------------------------------
+Administrador e RH veem um icone de sino no topo da tela, com avisos
+calculados na hora (nao precisa recarregar a pagina, é so entrar de novo
+que ja atualiza):
+- Funcionario ativo que esta sem bater ponto ha 3 dias uteis ou mais
+  (considerando os dias de trabalho de cada um — turno normal ou escala
+  de rodizio, e descontando dias com justificativa lancada).
+- Backup automatico que falhou recentemente (so Administrador).
+- Login bloqueado por tentativas erradas nas ultimas 24h (so
+  Administrador).
+Direcao e Consulta nao veem esse sino, ja que essas telas nao sao
+acessadas por esses perfis.
+
+
+RECUPERACAO DE EMERGENCIA (perdeu a senha do unico Administrador)
+----------------------------------------------------------------------
+Se ninguem mais conseguir entrar como Administrador:
+1. De dois cliques no arquivo "resetar_senha.bat".
+2. Uma janela preta vai listar os usuarios cadastrados e pedir o numero
+   (ID) de quem voce quer redefinir a senha.
+3. Digite a nova senha (nao aparece na tela enquanto voce digita, é normal).
+4. Pronto — pode fechar a janela e entrar no sistema com a senha nova.
+Esse script funciona com o servidor ligado ou desligado.
+
+
+COMO PARAR O SISTEMA
+----------------------
+Feche a janela preta "Servidor - Sistema de Ponto". Para usar de novo, so
+rodar o "iniciar.bat" outra vez.
+
+
+DEIXAR O SISTEMA LIGADO SEMPRE
+---------------------------------
+Se quiser que o totem já apareça sozinho quando o computador ligar, crie um
+atalho do "iniciar.bat" na pasta de Inicializar do Windows
+(Win + R, digite "shell:startup" e arraste o atalho para la).
+
+
+PERGUNTAS FREQUENTES
+-----------------------
+- "Da pra acessar de outro computador da escola?"
+  Da para habilitar depois (o sistema já foi feito pensando nisso), mas na
+  configuracao atual ele so funciona no computador onde foi instalado.
+
+- "Perdi/quebrei um cracha, e agora?"
+  Va em "Funcionarios", abra o cracha da pessoa de novo (o QR Code é sempre
+  o mesmo) e imprima outra via.
+
+- "Posso usar num tablet Android/iPad em vez de computador?"
+  Sim, desde que o tablet acesse o mesmo endereco do computador que esta
+  rodando o servidor pela rede local da escola (isso exige habilitar o acesso
+  pela rede, que hoje esta desligado por padrao — veja a pergunta acima).
+
+- "Como muda a cor do sistema?"
+  Em "Configuracoes" (so Administrador), tem um seletor de cor principal.

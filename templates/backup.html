@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf_input %}
+{% block titulo %}Backup{% endblock %}
+{% block conteudo %}
+  <h1 class="h3 fw-bold mb-4">Backup</h1>
+
+  <div class="row g-4">
+    <div class="col-lg-6">
+      <div class="card mb-4">
+        <div class="card-body">
+          <h2 class="h6 fw-bold mb-2"><i class="bi bi-download me-1"></i>Gerar backup</h2>
+          <p class="text-secondary small">Baixa um .zip com o banco de dados, fotos, QR Codes e logo — tudo que é dado real da escola.</p>
+          <a href="{{ url_for('backup_gerar') }}" class="btn btn-primary"><i class="bi bi-download me-1"></i>Baixar backup agora</a>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-body">
+          <h2 class="h6 fw-bold mb-2">Backups automáticos</h2>
+          <p class="text-secondary small">
+            Um backup é gerado automaticamente a cada
+            {% if config and config.backup_frequencia_horas == 168 %}semana{% elif config %}{{ config.backup_frequencia_horas }} horas{% else %}24 horas{% endif %}
+            (mantém os últimos 14). Isso só é verificado quando alguém acessa o sistema — se ficar
+            muito tempo sem acesso, o próximo backup só roda no acesso seguinte.
+            {% if config and config.backup_pasta_destino %}
+              Também é copiado para <code>{{ config.backup_pasta_destino }}</code>.
+            {% endif %}
+            Pode ajustar em <a href="{{ url_for('configuracoes') }}">Configurações</a>.
+          </p>
+          <div class="table-responsive">
+            <table class="table table-sm table-hover align-middle mb-0">
+              <thead><tr><th>Quando</th><th>Tamanho</th><th></th></tr></thead>
+              <tbody>
+                {% for b in backups_auto %}
+                  <tr>
+                    <td>{{ b.quando }}</td>
+                    <td>{{ b.tamanho_kb }} KB</td>
+                    <td class="text-end">
+                      <a href="{{ url_for('backup_auto_download', nome_arquivo=b.nome) }}" class="btn btn-sm btn-outline-secondary">
+                        <i class="bi bi-download"></i>
+                      </a>
+                    </td>
+                  </tr>
+                {% else %}
+                  <tr><td colspan="3" class="text-secondary text-center py-3">Nenhum backup automático ainda.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-6">
+      <div class="card border-danger">
+        <div class="card-body">
+          <h2 class="h6 fw-bold mb-2 text-danger"><i class="bi bi-exclamation-triangle me-1"></i>Restaurar backup</h2>
+          <p class="text-secondary small">
+            Isso <strong>substitui todos os dados atuais</strong> pelos dados do arquivo enviado.
+            Uma cópia de segurança do estado atual é feita automaticamente antes de substituir, mas use com cuidado.
+          </p>
+          <form method="post" action="{{ url_for('backup_restaurar') }}" enctype="multipart/form-data"
+                onsubmit="return confirm('Tem certeza? Isso vai substituir todos os dados atuais.');">
+            {{ csrf_input() }}
+            <div class="mb-3">
+              <label class="form-label">Arquivo de backup (.zip)</label>
+              <input type="file" name="arquivo" class="form-control" accept=".zip" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Digite <strong>RESTAURAR</strong> para confirmar</label>
+              <input type="text" name="confirmacao" class="form-control" placeholder="RESTAURAR" required>
+            </div>
+            <button type="submit" class="btn btn-danger"><i class="bi bi-upload me-1"></i>Restaurar backup</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}

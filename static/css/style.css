@@ -1,0 +1,148 @@
+:root {
+  --cor-primaria: #2563eb;
+  --cor-primaria-escura: #1e40af;
+  --cor-sucesso: #16a34a;
+  --cor-erro: #dc2626;
+  --cor-texto: #1f2933;
+  --cor-fundo: #f4f6f8;
+  --cor-borda: #d7dde3;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: "Inter", -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  color: var(--cor-texto);
+  background: var(--cor-fundo);
+}
+
+.oculto { display: none !important; }
+
+.botao-grande {
+  font-family: inherit;
+  cursor: pointer;
+  background: var(--cor-primaria);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 20px;
+  font-size: 1rem;
+  text-decoration: none;
+  display: inline-block;
+}
+.botao-grande:hover { background: var(--cor-primaria-escura); }
+
+/* ---------- Totem (kiosk) ---------- */
+.kiosk-body {
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  background: linear-gradient(160deg, #0f1f4d, #1E40AF);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.kiosk-overlay {
+  text-align: center;
+  padding: 40px;
+}
+.kiosk-logo {
+  max-height: 64px;
+  margin-bottom: 1.5rem;
+}
+.kiosk-overlay h1 {
+  font-size: 3rem;
+  margin-bottom: 0.5rem;
+  font-weight: 700;
+}
+.kiosk-overlay p {
+  font-size: 1.3rem;
+  opacity: 0.85;
+  margin-bottom: 2rem;
+}
+.kiosk-overlay .botao-grande {
+  font-size: 1.6rem;
+  padding: 20px 48px;
+  border-radius: 16px;
+}
+
+.kiosk-camera {
+  position: relative;
+  height: 100%;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.kiosk-camera video {
+  max-height: 100%;
+  max-width: 100%;
+  transform: scaleX(-1);
+  border-radius: 12px;
+}
+.kiosk-relogio {
+  position: absolute;
+  top: 24px;
+  left: 32px;
+  font-size: 2rem;
+  font-weight: 600;
+  opacity: 0.9;
+}
+.kiosk-instrucao {
+  position: absolute;
+  bottom: 40px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 1.6rem;
+  opacity: 0.9;
+}
+
+.kiosk-feedback {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 40px;
+}
+.kiosk-feedback.feedback-sucesso { background: rgba(22, 163, 74, 0.97); }
+.kiosk-feedback.feedback-erro { background: rgba(220, 38, 38, 0.97); }
+.feedback-foto {
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 4px solid rgba(255, 255, 255, 0.85);
+  margin-bottom: 1.25rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+}
+.feedback-icone {
+  font-size: 5rem;
+  line-height: 1;
+  margin-bottom: 1rem;
+}
+.feedback-texto {
+  font-size: 3rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+.feedback-subtexto {
+  font-size: 1.6rem;
+  opacity: 0.9;
+}
+
+.kiosk-admin-link {
+  position: fixed;
+  bottom: 16px;
+  right: 20px;
+  font-size: 1.4rem;
+  color: rgba(255, 255, 255, 0.35);
+  text-decoration: none;
+}
+.kiosk-admin-link:hover { color: rgba(255, 255, 255, 0.8); }

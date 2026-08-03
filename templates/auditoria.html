@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block titulo %}Auditoria{% endblock %}
+{% block conteudo %}
+  <h1 class="h3 fw-bold mb-1">Auditoria</h1>
+  <p class="text-secondary mb-4">{{ total }} registro(s) encontrado(s) no período.</p>
+
+  <form method="get" class="card mb-4">
+    <div class="card-body">
+      <div class="row g-2 align-items-end">
+        <div class="col-md-2">
+          <label class="form-label">De</label>
+          <input type="date" name="data_inicio" class="form-control" value="{{ data_inicio }}">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Até</label>
+          <input type="date" name="data_fim" class="form-control" value="{{ data_fim }}">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Usuário</label>
+          <select name="usuario" class="form-select">
+            <option value="">Todos</option>
+            {% for u in usuarios_distintos %}
+              <option value="{{ u }}" {{ "selected" if usuario_filtro == u else "" }}>{{ u }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Ação</label>
+          <select name="acao" class="form-select">
+            <option value="">Todas</option>
+            {% for a in acoes_distintas %}
+              <option value="{{ a }}" {{ "selected" if acao_filtro == a else "" }}>{{ a }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Entidade</label>
+          <select name="entidade" class="form-select">
+            <option value="">Todas</option>
+            {% for e in entidades_distintas %}
+              <option value="{{ e }}" {{ "selected" if entidade_filtro == e else "" }}>{{ e }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-2">
+          <button type="submit" class="btn btn-primary w-100"><i class="bi bi-funnel me-1"></i>Filtrar</button>
+        </div>
+      </div>
+    </div>
+  </form>
+
+  <div class="card">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead>
+          <tr>
+            <th>Data/hora</th><th>Usuário</th><th>Perfil</th><th>Ação</th><th>Entidade</th><th>ID</th><th>Detalhes</th><th>IP</th><th>Dispositivo</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in registros %}
+            <tr>
+              <td class="text-nowrap">{{ r.timestamp }}</td>
+              <td>{{ r.usuario }}</td>
+              <td>{{ r.perfil }}</td>
+              <td><span class="badge text-bg-secondary">{{ r.acao }}</span></td>
+              <td>{{ r.entidade }}</td>
+              <td>{{ r.entidade_id or "-" }}</td>
+              <td class="small">{{ r.detalhes or "-" }}</td>
+              <td class="text-secondary small">{{ r.ip or "-" }}</td>
+              <td class="text-secondary small text-nowrap">
+                {% if r.navegador or r.sistema_operacional %}
+                  {{ r.navegador or "?" }} / {{ r.sistema_operacional or "?" }}
+                {% else %}
+                  -
+                {% endif %}
+              </td>
+            </tr>
+          {% else %}
+            <tr><td colspan="9" class="text-secondary text-center py-4">Nenhum registro encontrado para esse filtro.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {% if total_paginas > 1 %}
+    <nav class="d-flex justify-content-center gap-2 mt-3">
+      {% for p in range(1, total_paginas + 1) %}
+        <a class="btn btn-sm {{ 'btn-primary' if p == pagina else 'btn-outline-secondary' }}"
+           href="{{ url_for('auditoria', pagina=p, data_inicio=data_inicio, data_fim=data_fim, usuario=usuario_filtro, acao=acao_filtro, entidade=entidade_filtro) }}">
+          {{ p }}
+        </a>
+      {% endfor %}
+    </nav>
+  {% endif %}
+{% endblock %}
