@@ -26,7 +26,7 @@ venv\Scripts\python.exe -c "import pathlib; [p.unlink() for p in pathlib.Path('v
 
 echo.
 echo Iniciando o servidor do sistema de ponto...
-start "Servidor - Sistema de Ponto (nao feche esta janela)" venv\Scripts\python.exe -m waitress --listen=127.0.0.1:5000 app:app
+start "Servidor - Sistema de Ponto (nao feche esta janela)" venv\Scripts\python.exe -m waitress --listen=0.0.0.0:5000 app:app
 
 ping -n 3 127.0.0.1 >nul
 

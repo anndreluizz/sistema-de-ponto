@@ -37,11 +37,55 @@ COMO USAR PELA PRIMEIRA VEZ
 
 USO NO DIA A DIA (TOTEM)
 --------------------------
-- Deixe o computador/tablet da entrada sempre na tela do totem (endereço
-  http://127.0.0.1:5000/), com o botao "Iniciar" ja tocado (camera ligada).
+- No computador que roda o sistema, deixe sempre a tela do totem aberta
+  (endereço http://127.0.0.1:5000/), com o botao "Iniciar" ja tocado
+  (camera ligada).
 - Cada funcionario aproxima o cracha da camera. O sistema reconhece sozinho
   se é entrada ou saida (nao precisa escolher).
 - Para tirar a tela do totem do modo tela cheia, aperte a tecla ESC.
+- Tambem da pra usar um tablet Android separado so pro totem, enquanto o
+  administrador acessa o sistema em outro computador — veja a secao
+  "USAR UM TABLET NO TOTEM" logo abaixo.
+
+
+USAR UM TABLET NO TOTEM (REDE WI-FI DA ESCOLA)
+--------------------------------------------------
+O sistema já aceita acesso de outros aparelhos pela rede Wi-Fi da escola
+(sem internet nenhuma envolvida — só dentro da rede local). Pra deixar um
+tablet Android só na tela do totem, e usar o computador em outro lugar
+pra administrar:
+
+1. Descubra o "endereço" do computador que roda o sistema na rede:
+   - No computador, aperte Win + R, digite "cmd" e Enter.
+   - Digite "ipconfig" e Enter.
+   - Procure a linha "Endereço IPv4" (algo tipo 192.168.0.15).
+
+2. No tablet Android, abra o Chrome e acesse esse endereço com ":5000" no
+   final — por exemplo: http://192.168.0.15:5000/
+   Se aparecer um aviso do Windows perguntando se permite o programa
+   Python acessar a rede, clique em "Permitir acesso".
+
+3. IMPORTANTE — passo único, só precisa fazer uma vez neste tablet: pra
+   câmera funcionar fora do próprio computador, o Chrome do Android exige
+   uma liberação manual (é uma regra de segurança do navegador, não do
+   nosso sistema):
+   a) No Chrome do tablet, digite na barra de endereço:
+      chrome://flags/#unsafely-treat-insecure-origin-as-secure
+   b) No campo de texto que aparece, cole o mesmo endereço do passo 2
+      (ex: http://192.168.0.15:5000) e ative a opção logo ao lado.
+   c) Toque em "Relaunch" pra reiniciar o Chrome.
+   d) Acesse o endereço de novo, toque em "Iniciar" e permita o uso da
+      câmera quando o Chrome perguntar.
+4. Pronto — deixe o tablet nessa tela (modo tela cheia) só pro totem, e
+   acesse a "Area administrativa" normalmente em qualquer outro
+   computador da escola, digitando o mesmo endereço (sem precisar do
+   passo 3, que é só pra tela do totem usar câmera).
+
+Atenção: se o Wi-Fi/roteador da escola trocar o endereço do computador
+(IPv4) depois de um tempo, repita o passo 1 pra achar o endereço novo.
+Se o tablet for um iPad (Safari), esse atalho do Chrome não existe —
+nesse caso é preciso configurar um certificado de segurança, que dá mais
+trabalho; procure orientação técnica se for esse o caso.
 
 
 PERFIS DE USUARIO
@@ -200,17 +244,20 @@ atalho do "iniciar.bat" na pasta de Inicializar do Windows
 PERGUNTAS FREQUENTES
 -----------------------
 - "Da pra acessar de outro computador da escola?"
-  Da para habilitar depois (o sistema já foi feito pensando nisso), mas na
-  configuracao atual ele so funciona no computador onde foi instalado.
+  Sim — o sistema já aceita isso pela rede Wi-Fi da escola (sem internet
+  envolvida). Veja a secao "USAR UM TABLET NO TOTEM" mais acima: o mesmo
+  passo a passo do endereço/IP vale pra outro computador, só que sem
+  precisar da liberacao de camera do Chrome (só é necessária na tela do
+  totem, que usa a camera).
 
 - "Perdi/quebrei um cracha, e agora?"
   Va em "Funcionarios", abra o cracha da pessoa de novo (o QR Code é sempre
   o mesmo) e imprima outra via.
 
 - "Posso usar num tablet Android/iPad em vez de computador?"
-  Sim, desde que o tablet acesse o mesmo endereco do computador que esta
-  rodando o servidor pela rede local da escola (isso exige habilitar o acesso
-  pela rede, que hoje esta desligado por padrao — veja a pergunta acima).
+  Android sim, com um passo extra de liberar a camera no Chrome (veja
+  "USAR UM TABLET NO TOTEM" mais acima). iPad exigiria configurar um
+  certificado de segurança — mais trabalhoso, procure orientacao tecnica.
 
 - "Como muda a cor do sistema?"
   Em "Configuracoes" (so Administrador), tem um seletor de cor principal.
