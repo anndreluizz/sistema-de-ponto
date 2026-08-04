@@ -125,7 +125,18 @@ DASHBOARD, RELATORIOS E AJUSTES DE PONTO
 - "Relatorios" (Central de Relatorios): resumos por periodo, agrupados por
   funcionario/setor/cargo/turno, em 6 visoes (frequencia, faltas, atrasos,
   horas extras, banco de horas, ausencias). Exporta em PDF, Excel ou
-  impressao.
+  impressao. Mais embaixo na mesma tela tem a "Folha de ponto mensal"
+  (escolha o mes e exporte em PDF ou Excel) — uma lista unica com todos os
+  funcionarios (nome, funcao, vinculo — efetivo ou contratado) e, do lado,
+  uma coluna pra cada dia do mes (com o dia da semana embaixo do numero)
+  com um codigo curto: P (presenca), F (falta), AT (atestado), FE
+  (ferias), LC (licenca), FG (folga), LM (licenca maternidade/
+  paternidade), FL (falecimento), AB (abono legal) ou OU (outro) — a
+  legenda completa aparece no rodape do relatorio. Fica em branco no fim
+  de semana, nos dias de folga da escala e nos dias que ainda nao
+  chegaram no mes atual. As linhas saem agrupadas por "Categoria" (veja
+  abaixo): Gestao, Apoio Pedagogico, Professores (Efetivo antes de
+  Contratado) e Outros funcionarios, cada grupo com uma linha separadora.
 - "Ajustes de Ponto": tela do dia a dia — editar/excluir um registro,
   lançar um ponto manual (quando alguem esquece de bater), e registrar
   justificativas — um dia justificado deixa de contar como falta. Toda
@@ -150,6 +161,11 @@ DASHBOARD, RELATORIOS E AJUSTES DE PONTO
   campo. Tambem da pra anexar documentos (RG, CTPS, comprovante etc) no
   cadastro — esses arquivos ficam guardados numa pasta separada que só
   quem esta logado no sistema consegue baixar, e entram no backup normal.
+  Tem tambem os campos "Vinculo" (Efetivo ou Contratado) e "Categoria"
+  (Gestao, Apoio Pedagogico, Professores ou Outros funcionarios) — os
+  dois opcionais, ficam em branco ate alguem preencher, e sao usados na
+  "Folha de ponto mensal" (Relatorios) pra mostrar e agrupar cada
+  funcionario corretamente.
 - Em "Setores", cada setor pode ter um icone, uma cor, um responsavel e um
   centro de custo — so pra organizar melhor, nao afeta os relatorios.
 

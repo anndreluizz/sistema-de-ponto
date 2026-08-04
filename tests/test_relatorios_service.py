@@ -8,6 +8,7 @@ from relatorios_service import (
     formatar_horas,
     horas_esperadas_no_dia_segundos,
     montar_comparativo_mensal,
+    montar_folha_ponto_mensal,
     montar_linhas_central,
     montar_ranking_atrasos,
 )
@@ -144,6 +145,106 @@ def test_montar_linhas_central_ausencia_nao_conta_falta(conn, cenario_semana):
     linhas = montar_linhas_central(conn, "2026-01-05", "2026-01-09", "funcionario", "ausencias")
     por_nome = {linha["dimensao"]: linha for linha in linhas}
     assert por_nome["Beto Testado"]["ferias"] == 1
+
+
+def test_montar_folha_ponto_mensal_ultimo_dia_do_mes(conn, cenario_semana):
+    resultado = montar_folha_ponto_mensal(conn, 2026, 1)
+    assert resultado["ultimo_dia"] == 31
+
+
+def test_montar_folha_ponto_mensal_codigos_por_dia(conn, cenario_semana):
+    resultado = montar_folha_ponto_mensal(conn, 2026, 1)
+    por_nome = {linha["funcionario"]["nome"]: linha["codigos"] for linha in resultado["linhas"]}
+
+    codigos_ana = por_nome["Ana Pontual"]
+    assert codigos_ana[4] == "P"  # dia 5 (indice 4) = segunda, presente
+    assert codigos_ana[0] == "F"  # dia 1 = quinta util, sem dado nenhum = falta
+    assert codigos_ana[9] == ""  # dia 10 = sabado, nao e dia de trabalho
+    assert codigos_ana[10] == ""  # dia 11 = domingo
+
+    codigos_beto = por_nome["Beto Testado"]
+    assert codigos_beto[4] == "P"  # dia 5, presente
+    assert codigos_beto[5] == "P"  # dia 6, presente (mesmo com atraso - presenca e presenca)
+    assert codigos_beto[6] == "F"  # dia 7, falta nao justificada
+    assert codigos_beto[7] == "FE"  # dia 8, ausencia tipo ferias
+    assert codigos_beto[8] == "P"  # dia 9, presente
+
+
+def test_montar_folha_ponto_mensal_filtra_por_funcionario(conn, cenario_semana):
+    resultado = montar_folha_ponto_mensal(conn, 2026, 1, funcionario_id=cenario_semana["ana_id"])
+    assert len(resultado["linhas"]) == 1
+    assert resultado["linhas"][0]["funcionario"]["nome"] == "Ana Pontual"
+
+
+def test_montar_folha_ponto_mensal_sem_funcionario_correspondente(conn, cenario_semana):
+    resultado = montar_folha_ponto_mensal(conn, 2026, 1, funcionario_id=99999)
+    assert resultado["ultimo_dia"] == 31
+    assert resultado["linhas"] == []
+
+
+def test_montar_folha_ponto_mensal_dias_semana_abrev(conn, cenario_semana):
+    resultado = montar_folha_ponto_mensal(conn, 2026, 1)
+    dias = resultado["dias_semana_abrev"]
+    assert len(dias) == 31
+    assert dias[0] == "Qi"  # 2026-01-01 e quinta
+    assert dias[4] == "Sg"  # 2026-01-05
+    assert dias[9] == "Sb"  # 2026-01-10
+    assert dias[10] == "Do"  # 2026-01-11
+
+
+def test_montar_folha_ponto_mensal_ordena_por_categoria_e_vinculo(conn):
+    turno_id = conn.execute(
+        """INSERT INTO turnos (nome, horario_entrada, horario_saida, tolerancia_minutos, dias_semana)
+           VALUES ('turno', '08:00', '17:00', 10, '0,1,2,3,4')"""
+    ).lastrowid
+
+    def criar(nome, codigo, categoria, vinculo):
+        conn.execute(
+            """INSERT INTO funcionarios (nome, codigo, situacao, turno_id, categoria, vinculo)
+               VALUES (?, ?, 'ativo', ?, ?, ?)""",
+            (nome, codigo, turno_id, categoria, vinculo),
+        )
+
+    # insere fora de ordem de proposito
+    criar("Zelia Outros", "Z1", None, None)
+    criar("Bruno Professor Contratado", "B1", "professor", "contratado")
+    criar("Ana Professor Efetivo", "A1", "professor", "efetivo")
+    criar("Diretora Gestao", "D1", "gestao", None)
+    criar("Coordenadora Apoio", "C1", "apoio_pedagogico", None)
+    conn.commit()
+
+    resultado = montar_folha_ponto_mensal(conn, 2026, 1)
+    nomes = [linha["funcionario"]["nome"] for linha in resultado["linhas"]]
+    assert nomes == [
+        "Diretora Gestao",
+        "Coordenadora Apoio",
+        "Ana Professor Efetivo",
+        "Bruno Professor Contratado",
+        "Zelia Outros",
+    ]
+
+
+def test_montar_folha_ponto_mensal_ausencia_prevalece_sobre_presenca(conn):
+    turno_id = conn.execute(
+        """INSERT INTO turnos (nome, horario_entrada, horario_saida, tolerancia_minutos, dias_semana)
+           VALUES ('turno', '08:00', '17:00', 10, '0,1,2,3,4')"""
+    ).lastrowid
+    funcionario_id = conn.execute(
+        "INSERT INTO funcionarios (nome, codigo, situacao, turno_id) VALUES ('Dupla Marcacao', 'DM1', 'ativo', ?)",
+        (turno_id,),
+    ).lastrowid
+    conn.execute(
+        "INSERT INTO registros (funcionario_id, tipo, timestamp) VALUES (?, 'entrada', '2026-01-05 08:00:00')",
+        (funcionario_id,),
+    )
+    conn.execute(
+        "INSERT INTO ausencias (funcionario_id, data, tipo, criado_em) VALUES (?, '2026-01-05', 'atestado', datetime('now'))",
+        (funcionario_id,),
+    )
+    conn.commit()
+
+    resultado = montar_folha_ponto_mensal(conn, 2026, 1, funcionario_id=funcionario_id)
+    assert resultado["linhas"][0]["codigos"][4] == "AT"  # ausencia vence, nao vira "P"
 
 
 def test_calcular_stats_funcionarios_periodo_vazio(conn):

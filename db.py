@@ -96,6 +96,26 @@ def _migrar_funcionarios(conn):
         conn.commit()
 
 
+def _migrar_funcionarios_vinculo(conn):
+    colunas = _colunas_existentes(conn, "funcionarios")
+    if "vinculo" not in colunas:
+        conn.execute(
+            """ALTER TABLE funcionarios ADD COLUMN vinculo TEXT
+               CHECK (vinculo IS NULL OR vinculo IN ('efetivo', 'contratado'))"""
+        )
+        conn.commit()
+
+
+def _migrar_funcionarios_categoria(conn):
+    colunas = _colunas_existentes(conn, "funcionarios")
+    if "categoria" not in colunas:
+        conn.execute(
+            """ALTER TABLE funcionarios ADD COLUMN categoria TEXT
+               CHECK (categoria IS NULL OR categoria IN ('gestao', 'apoio_pedagogico', 'professor', 'outro'))"""
+        )
+        conn.commit()
+
+
 def _migrar_registros(conn):
     colunas = _colunas_existentes(conn, "registros")
     novas_colunas_simples = {
@@ -394,6 +414,8 @@ def init_db():
         _migrar_setores(conn)
         _migrar_turnos(conn)
         _migrar_funcionarios(conn)
+        _migrar_funcionarios_vinculo(conn)
+        _migrar_funcionarios_categoria(conn)
         _migrar_registros(conn)
         _migrar_configuracoes(conn)
         _migrar_ausencias_tipos(conn)

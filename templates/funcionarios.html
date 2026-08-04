@@ -73,7 +73,10 @@
                 {{ avatar(f, tamanho=40) }}
                 <div>
                   <div class="fw-semibold">{{ f.nome }}</div>
-                  <div class="text-secondary small">{{ f.cargo }}{% if f.matricula %} · Mat. {{ f.matricula }}{% endif %}</div>
+                  <div class="text-secondary small">
+                    {{ f.cargo }}{% if f.matricula %} · Mat. {{ f.matricula }}{% endif %}
+                    {% if f.vinculo %} · {{ "Efetivo" if f.vinculo == "efetivo" else "Contratado" }}{% endif %}
+                  </div>
                 </div>
               </div>
             </td>

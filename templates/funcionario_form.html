@@ -20,26 +20,38 @@
       </div>
 
       <div class="row g-3">
-        <div class="col-md-6">
+        <div class="col-md-4">
           <label class="form-label">Nome completo *</label>
           <input type="text" name="nome" class="form-control" required value="{{ funcionario.nome if funcionario else '' }}">
         </div>
-        <div class="col-md-6">
+        <div class="col-md-4">
           <label class="form-label">Cargo</label>
           <input type="text" name="cargo" class="form-control" value="{{ funcionario.cargo if funcionario else '' }}">
         </div>
-
         <div class="col-md-4">
+          <label class="form-label">Categoria</label>
+          {% set categoria_atual = funcionario.categoria if funcionario else "" %}
+          <select name="categoria" class="form-select">
+            <option value="" {{ "selected" if not categoria_atual else "" }}>Não informado</option>
+            <option value="gestao" {{ "selected" if categoria_atual == "gestao" else "" }}>Gestão</option>
+            <option value="apoio_pedagogico" {{ "selected" if categoria_atual == "apoio_pedagogico" else "" }}>Apoio Pedagógico</option>
+            <option value="professor" {{ "selected" if categoria_atual == "professor" else "" }}>Professores</option>
+            <option value="outro" {{ "selected" if categoria_atual == "outro" else "" }}>Outros funcionários</option>
+          </select>
+          <div class="form-text mt-0">Define a ordem da Folha de Ponto (Gestão, Apoio Pedagógico, Professores — Efetivo antes de Contratado —, Outros).</div>
+        </div>
+
+        <div class="col-md-3">
           <label class="form-label">CPF</label>
           <input type="text" name="cpf" class="form-control" placeholder="000.000.000-00"
                  value="{{ funcionario.cpf if funcionario else '' }}">
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3">
           <label class="form-label">Matrícula</label>
           <input type="text" name="matricula" class="form-control"
                  value="{{ funcionario.matricula if funcionario else matricula_sugerida }}">
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3">
           <label class="form-label">Situação</label>
           {% set situacao_atual = funcionario.situacao if funcionario else "ativo" %}
           <select name="situacao" class="form-select">
@@ -47,6 +59,15 @@
             <option value="inativo" {{ "selected" if situacao_atual == "inativo" else "" }}>Inativo</option>
             <option value="ferias" {{ "selected" if situacao_atual == "ferias" else "" }}>Férias</option>
             <option value="afastado" {{ "selected" if situacao_atual == "afastado" else "" }}>Afastado</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Vínculo</label>
+          {% set vinculo_atual = funcionario.vinculo if funcionario else "" %}
+          <select name="vinculo" class="form-select">
+            <option value="" {{ "selected" if not vinculo_atual else "" }}>Não informado</option>
+            <option value="efetivo" {{ "selected" if vinculo_atual == "efetivo" else "" }}>Efetivo</option>
+            <option value="contratado" {{ "selected" if vinculo_atual == "contratado" else "" }}>Contratado</option>
           </select>
         </div>
 

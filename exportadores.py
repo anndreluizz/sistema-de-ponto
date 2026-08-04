@@ -6,7 +6,7 @@ import qrcode
 from fpdf import FPDF
 from openpyxl import Workbook
 from openpyxl.drawing.image import Image as ExcelImage
-from openpyxl.styles import Font, PatternFill
+from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -172,6 +172,154 @@ def gerar_excel_tabela(cabecalho, titulo, subtitulo, colunas, linhas):
 
     for indice in range(1, len(colunas) + 1):
         ws.column_dimensions[get_column_letter(indice)].width = 20
+
+    saida = BytesIO()
+    wb.save(saida)
+    return saida.getvalue()
+
+
+_ROTULOS_VINCULO = {"efetivo": "Efetivo", "contratado": "Contratado"}
+
+
+def _rotulo_vinculo(vinculo):
+    return _ROTULOS_VINCULO.get(vinculo, "Não informado")
+
+
+LEGENDA_CODIGOS = [
+    ("P", "Presença"), ("F", "Falta"), ("AT", "Atestado"), ("FE", "Férias"),
+    ("LC", "Licença"), ("FG", "Folga"), ("LM", "Lic. maternidade/paternidade"),
+    ("FL", "Falecimento"), ("AB", "Abono legal"), ("OU", "Outro"),
+]
+
+_NOMES_CATEGORIA = {
+    "gestao": "Gestão",
+    "apoio_pedagogico": "Apoio Pedagógico",
+    "professor": "Professores",
+    "outro": "Outros funcionários",
+}
+
+
+def _texto_legenda():
+    return "   ".join(f"{codigo}={nome}" for codigo, nome in LEGENDA_CODIGOS)
+
+
+def _nome_categoria(categoria):
+    return _NOMES_CATEGORIA.get(categoria, "Outros funcionários")
+
+
+def gerar_pdf_folha_ponto(cabecalho, titulo, subtitulo, ultimo_dia, dias_semana_abrev, linhas):
+    """Grade única: uma linha por funcionário (nome/função/vínculo + 1 código por dia do mês),
+    agrupada por categoria com uma linha separadora entre cada grupo."""
+    pdf = _PDFRelatorio(cabecalho, titulo, subtitulo)
+    pdf.add_page()
+
+    n_colunas = 3 + ultimo_dia
+    colunas = ["Nome", "Funcao", "Vinculo"] + [
+        f"{d}\n{dias_semana_abrev[d - 1]}" for d in range(1, ultimo_dia + 1)
+    ]
+    col_widths = (40, 24, 16) + (6,) * ultimo_dia
+
+    dados_tabela = [colunas]
+    categoria_anterior = object()  # sentinela: garante que a 1a linha sempre abra um separador
+    for linha in linhas:
+        if linha["categoria"] != categoria_anterior:
+            dados_tabela.append([_nome_categoria(linha["categoria"]).upper()] + [""] * (n_colunas - 1))
+            categoria_anterior = linha["categoria"]
+        f = linha["funcionario"]
+        dados_tabela.append(
+            [f["nome"], f["cargo"] or "-", _rotulo_vinculo(f["vinculo"])]
+            + [codigo or "" for codigo in linha["codigos"]]
+        )
+
+    pdf.set_font("Helvetica", "", 6)
+    with pdf.table(col_widths=col_widths, text_align="LEFT", line_height=4) as table:
+        for linha_dados in dados_tabela:
+            row = table.row()
+            for valor in linha_dados:
+                row.cell(str(valor))
+
+    pdf.ln(3)
+    pdf.set_font("Helvetica", "", 7)
+    pdf.set_text_color(90, 90, 90)
+    pdf.multi_cell(0, 4, "Legenda: " + _texto_legenda())
+    pdf.set_text_color(0, 0, 0)
+
+    return bytes(pdf.output())
+
+
+def gerar_excel_folha_ponto(cabecalho, titulo, subtitulo, ultimo_dia, dias_semana_abrev, linhas):
+    """Grade única, uma aba: uma linha por funcionário, uma coluna por dia do mês, agrupada
+    por categoria com uma linha separadora mesclada entre cada grupo."""
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Folha de Ponto"
+
+    linha_atual = 1
+    if cabecalho.get("logo_abs_path"):
+        try:
+            imagem = ExcelImage(str(cabecalho["logo_abs_path"]))
+            imagem.height = 50
+            imagem.width = 50
+            ws.add_image(imagem, "A1")
+            linha_atual = 4
+        except Exception:
+            pass
+
+    ws.cell(row=linha_atual, column=1, value=cabecalho["nome_instituicao"]).font = Font(bold=True, size=13)
+    linha_atual += 1
+    ws.cell(row=linha_atual, column=1, value=titulo).font = Font(bold=True, size=11)
+    linha_atual += 1
+    ws.cell(row=linha_atual, column=1, value=subtitulo).font = Font(italic=True, size=9, color="666666")
+    linha_atual += 2
+
+    n_colunas = 3 + ultimo_dia
+    linha_cabecalho = linha_atual
+    for indice, titulo_coluna in enumerate(["Nome", "Função", "Vínculo"], start=1):
+        celula = ws.cell(row=linha_cabecalho, column=indice, value=titulo_coluna)
+        celula.font = Font(bold=True, color="FFFFFF")
+        celula.fill = PatternFill("solid", fgColor="1E40AF")
+        celula.alignment = Alignment(horizontal="center", vertical="center")
+    for dia_num in range(1, ultimo_dia + 1):
+        celula = ws.cell(
+            row=linha_cabecalho, column=3 + dia_num, value=f"{dia_num}\n{dias_semana_abrev[dia_num - 1]}"
+        )
+        celula.font = Font(bold=True, color="FFFFFF")
+        celula.fill = PatternFill("solid", fgColor="1E40AF")
+        celula.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    ws.row_dimensions[linha_cabecalho].height = 28
+    linha_atual = linha_cabecalho + 1
+
+    categoria_anterior = object()  # sentinela: garante que a 1a linha sempre abra um separador
+    for linha in linhas:
+        if linha["categoria"] != categoria_anterior:
+            ws.merge_cells(start_row=linha_atual, start_column=1, end_row=linha_atual, end_column=n_colunas)
+            celula = ws.cell(row=linha_atual, column=1, value=_nome_categoria(linha["categoria"]).upper())
+            celula.font = Font(bold=True, size=10)
+            celula.fill = PatternFill("solid", fgColor="DCE3F0")
+            linha_atual += 1
+            categoria_anterior = linha["categoria"]
+
+        f = linha["funcionario"]
+        ws.cell(row=linha_atual, column=1, value=f["nome"])
+        ws.cell(row=linha_atual, column=2, value=f["cargo"] or "-")
+        ws.cell(row=linha_atual, column=3, value=_rotulo_vinculo(f["vinculo"]))
+        for indice, codigo in enumerate(linha["codigos"], start=4):
+            celula = ws.cell(row=linha_atual, column=indice, value=codigo or None)
+            celula.alignment = Alignment(horizontal="center")
+        linha_atual += 1
+
+    ws.column_dimensions["A"].width = 28
+    ws.column_dimensions["B"].width = 20
+    ws.column_dimensions["C"].width = 14
+    for indice in range(4, n_colunas + 1):
+        ws.column_dimensions[get_column_letter(indice)].width = 4
+
+    linha_atual += 1
+    ws.cell(row=linha_atual, column=1, value="Legenda:").font = Font(bold=True, size=9)
+    linha_atual += 1
+    for codigo, nome_codigo in LEGENDA_CODIGOS:
+        ws.cell(row=linha_atual, column=1, value=f"{codigo} = {nome_codigo}").font = Font(size=9, color="666666")
+        linha_atual += 1
 
     saida = BytesIO()
     wb.save(saida)

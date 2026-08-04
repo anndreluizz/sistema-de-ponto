@@ -763,3 +763,105 @@ def montar_comparativo_mensal(conn, quantidade_meses=6, hoje=None):
             }
         )
     return resultado
+
+
+CODIGO_AUSENCIA = {
+    "atestado": "AT",
+    "ferias": "FE",
+    "licenca": "LC",
+    "folga": "FG",
+    "licenca_maternidade_paternidade": "LM",
+    "falecimento": "FL",
+    "abono_legal": "AB",
+    "outro": "OU",
+}
+
+NOMES_DIAS_SEMANA_ABREV = ["Sg", "Te", "Qa", "Qi", "Sx", "Sb", "Do"]
+
+ORDEM_CATEGORIA = {"gestao": 0, "apoio_pedagogico": 1, "professor": 2}
+NOMES_CATEGORIA = {
+    "gestao": "Gestão",
+    "apoio_pedagogico": "Apoio Pedagógico",
+    "professor": "Professores",
+    "outro": "Outros funcionários",
+}
+
+
+def _chave_ordenacao_folha_ponto(f):
+    ordem_categoria = ORDEM_CATEGORIA.get(f["categoria"], 3)
+    ordem_vinculo = 0
+    if f["categoria"] == "professor":
+        ordem_vinculo = {"efetivo": 0, "contratado": 1}.get(f["vinculo"], 2)
+    return (ordem_categoria, ordem_vinculo, f["nome"])
+
+
+def montar_folha_ponto_mensal(conn, ano, mes, funcionario_id=None):
+    """Grade mensal: uma linha por funcionário ativo, um código curto por dia do mês
+    (P=presença, F=falta, ou o código de CODIGO_AUSENCIA). Célula em branco quando o dia
+    não é de trabalho pra pessoa (turno/escala), é anterior à admissão, ou ainda não chegou.
+    Se houver ponto batido E ausência no mesmo dia, a ausência prevalece no código.
+    Linhas saem ordenadas por categoria (Gestão, Apoio Pedagógico, Professores — Efetivo
+    antes de Contratado —, Outros/não informado) e depois por nome."""
+    _, ultimo_dia = calendar.monthrange(ano, mes)
+    data_inicio = date(ano, mes, 1)
+    data_fim = date(ano, mes, ultimo_dia)
+    limite = min(data_fim, date.today())
+    dias_semana_abrev = [
+        NOMES_DIAS_SEMANA_ABREV[date(ano, mes, dia_num).weekday()] for dia_num in range(1, ultimo_dia + 1)
+    ]
+
+    query = f"""SELECT funcionarios.*, {SQL_COLUNAS_TURNO_EFETIVO}
+                FROM funcionarios
+                {SQL_JOIN_TURNO_EFETIVO}
+                WHERE funcionarios.situacao = 'ativo'"""
+    params = []
+    if funcionario_id:
+        query += " AND funcionarios.id = ?"
+        params.append(funcionario_id)
+    funcionarios = sorted(conn.execute(query, params).fetchall(), key=_chave_ordenacao_folha_ponto)
+    if not funcionarios:
+        return {"ultimo_dia": ultimo_dia, "dias_semana_abrev": dias_semana_abrev, "linhas": []}
+
+    ids_funcionarios = [f["id"] for f in funcionarios]
+    placeholders = ",".join("?" * len(ids_funcionarios))
+
+    registros = conn.execute(
+        f"""SELECT DISTINCT funcionario_id, date(timestamp) AS dia FROM registros
+            WHERE funcionario_id IN ({placeholders})
+              AND date(timestamp) BETWEEN ? AND ?""",
+        [*ids_funcionarios, data_inicio.isoformat(), data_fim.isoformat()],
+    ).fetchall()
+    dias_com_ponto = {}
+    for r in registros:
+        dias_com_ponto.setdefault(r["funcionario_id"], set()).add(r["dia"])
+
+    ausencias = conn.execute(
+        f"""SELECT funcionario_id, data, tipo FROM ausencias
+            WHERE funcionario_id IN ({placeholders}) AND data BETWEEN ? AND ?""",
+        [*ids_funcionarios, data_inicio.isoformat(), data_fim.isoformat()],
+    ).fetchall()
+    tipo_ausencia_por_dia = {(a["funcionario_id"], a["data"]): a["tipo"] for a in ausencias}
+
+    linhas = []
+    for f in funcionarios:
+        codigos = []
+        for dia_num in range(1, ultimo_dia + 1):
+            data_dia = date(ano, mes, dia_num)
+            iso = data_dia.isoformat()
+
+            if data_dia > limite or (f["data_admissao"] and iso < f["data_admissao"]):
+                codigos.append("")
+                continue
+
+            tipo_ausencia = tipo_ausencia_por_dia.get((f["id"], iso))
+            if tipo_ausencia:
+                codigos.append(CODIGO_AUSENCIA.get(tipo_ausencia, "OU"))
+            elif iso in dias_com_ponto.get(f["id"], ()):
+                codigos.append("P")
+            elif dia_e_util_para_funcionario(f, data_dia):
+                codigos.append("F")
+            else:
+                codigos.append("")
+        linhas.append({"funcionario": f, "codigos": codigos, "categoria": f["categoria"] or "outro"})
+
+    return {"ultimo_dia": ultimo_dia, "dias_semana_abrev": dias_semana_abrev, "linhas": linhas}

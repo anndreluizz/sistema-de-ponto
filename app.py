@@ -118,6 +118,7 @@ NOMES_TIPO_AUSENCIA = {
     "abono_legal": "Doação de sangue / serviço eleitoral",
     "outro": "Outro",
 }
+NOMES_VINCULO = {"efetivo": "Efetivo", "contratado": "Contratado"}
 NOMES_DIAS_SEMANA_ABREV = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"]
 NOMES_MESES = {
     1: "Janeiro", 2: "Fevereiro", 3: "Março", 4: "Abril", 5: "Maio", 6: "Junho",
@@ -1075,6 +1076,8 @@ def salvar_funcionario(conn, funcionario_id):
     banco_horas_inicio = request.form.get("banco_horas_inicio", "").strip() or None
     rg = request.form.get("rg", "").strip()
     salario = request.form.get("salario", "").strip()
+    vinculo = request.form.get("vinculo", "").strip() or None
+    categoria = request.form.get("categoria", "").strip() or None
 
     modo_agenda = request.form.get("modo_agenda", "nenhum")
     turno_id = request.form.get("turno_id") or None
@@ -1088,6 +1091,10 @@ def salvar_funcionario(conn, funcionario_id):
         erro = "Situação inválida."
     elif modo_agenda == "escala" and (not escala_id or not escala_data_referencia):
         erro = "Selecione a escala e a data de referência do ciclo."
+    elif vinculo and vinculo not in NOMES_VINCULO:
+        erro = "Vínculo inválido."
+    elif categoria and categoria not in relatorios_service.NOMES_CATEGORIA:
+        erro = "Categoria inválida."
 
     if modo_agenda == "turno":
         escala_id = None
@@ -1111,12 +1118,12 @@ def salvar_funcionario(conn, funcionario_id):
     campos = [
         "nome", "cargo", "situacao", "cpf", "matricula", "setor_id", "turno_id", "escala_id",
         "escala_data_referencia", "banco_horas_inicio", "telefone", "email", "data_admissao",
-        "observacoes", "rg",
+        "observacoes", "rg", "vinculo", "categoria",
     ]
     valores = [
         nome, cargo, situacao, cpf_normalizado or None, matricula or None, setor_id, turno_id,
         escala_id, escala_data_referencia, banco_horas_inicio, telefone or None, email or None,
-        data_admissao or None, observacoes or None, rg or None,
+        data_admissao or None, observacoes or None, rg or None, vinculo, categoria,
     ]
     if session.get("usuario_perfil") == "administrador":
         # Salário só é lido/gravado quando quem está salvando é Administrador — RH nunca
@@ -1824,6 +1831,7 @@ def relatorios():
             funcionario_id=funcionario_id or "",
             nomes_visao=NOMES_VISAO,
             config=config,
+            mes_folha_ponto_atual=date.today().strftime("%Y-%m"),
         )
     finally:
         conn.close()
@@ -1874,6 +1882,67 @@ def relatorios_exportar_excel():
     finally:
         conn.close()
     return _resposta_exportacao("xlsx", *dados, "relatorio.xlsx")
+
+
+def _dados_exportacao_folha_ponto(conn, req):
+    mes_str = req.args.get("mes") or date.today().strftime("%Y-%m")
+    try:
+        ano, mes = (int(parte) for parte in mes_str.split("-"))
+    except ValueError:
+        hoje = date.today()
+        ano, mes = hoje.year, hoje.month
+    funcionario_id = req.args.get("funcionario_id", "").strip() or None
+
+    resultado = relatorios_service.montar_folha_ponto_mensal(conn, ano, mes, funcionario_id)
+    cabecalho = exportadores.obter_dados_cabecalho(conn)
+    titulo = "Folha de Ponto Mensal"
+    subtitulo = f"{NOMES_MESES[mes]}/{ano}"
+    return (
+        cabecalho, titulo, subtitulo,
+        resultado["ultimo_dia"], resultado["dias_semana_abrev"], resultado["linhas"],
+    )
+
+
+def _resposta_exportacao_folha_ponto(
+    formato, cabecalho, titulo, subtitulo, ultimo_dia, dias_semana_abrev, linhas, nome_arquivo
+):
+    if formato == "pdf":
+        conteudo = exportadores.gerar_pdf_folha_ponto(
+            cabecalho, titulo, subtitulo, ultimo_dia, dias_semana_abrev, linhas
+        )
+        mimetype = "application/pdf"
+    else:
+        conteudo = exportadores.gerar_excel_folha_ponto(
+            cabecalho, titulo, subtitulo, ultimo_dia, dias_semana_abrev, linhas
+        )
+        mimetype = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    return app.response_class(
+        conteudo, mimetype=mimetype, headers={"Content-Disposition": f"attachment; filename={nome_arquivo}"}
+    )
+
+
+@app.route("/admin/relatorios/dias/exportar.pdf")
+@login_obrigatorio
+@perfil_obrigatorio(*PERFIS_LEITURA)
+def relatorios_dias_exportar_pdf():
+    conn = db.get_db()
+    try:
+        dados = _dados_exportacao_folha_ponto(conn, request)
+    finally:
+        conn.close()
+    return _resposta_exportacao_folha_ponto("pdf", *dados, "folha_de_ponto.pdf")
+
+
+@app.route("/admin/relatorios/dias/exportar.xlsx")
+@login_obrigatorio
+@perfil_obrigatorio(*PERFIS_LEITURA)
+def relatorios_dias_exportar_excel():
+    conn = db.get_db()
+    try:
+        dados = _dados_exportacao_folha_ponto(conn, request)
+    finally:
+        conn.close()
+    return _resposta_exportacao_folha_ponto("xlsx", *dados, "folha_de_ponto.xlsx")
 
 
 @app.route("/admin/ajustes")
