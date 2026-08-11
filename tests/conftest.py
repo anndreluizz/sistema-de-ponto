@@ -1,6 +1,18 @@
+import tempfile
+from pathlib import Path
+
 import pytest
 
 import db as db_module
+
+# Proteção: app.py chama db.init_db() assim que é importado (efeito colateral de
+# nível de módulo). Se algum teste for o primeiro a fazer `import app`, isso não
+# pode, nem por um instante, rodar contra o ponto.db real — aponta DB_PATH pra um
+# arquivo temporário aqui em cima, antes de qualquer teste (e antes de qualquer
+# `import app`) executar. Cada teste que mexe com banco troca isso de novo por um
+# arquivo isolado próprio (fixtures `conn`/`cliente` abaixo), então isto é só uma
+# rede de segurança contra o import acontecer com o caminho real ainda configurado.
+db_module.DB_PATH = Path(tempfile.gettempdir()) / "sistema_ponto_teste_conftest.db"
 
 
 @pytest.fixture
@@ -10,6 +22,21 @@ def conn(tmp_path, monkeypatch):
     conexao = db_module.get_db()
     yield conexao
     conexao.close()
+
+
+@pytest.fixture
+def cliente(tmp_path, monkeypatch):
+    """Cliente de teste do Flask com banco isolado (arquivo novo por teste, igual à
+    fixture `conn`). O import de `app` só acontece aqui dentro (não no topo do
+    arquivo), depois do DB_PATH já isolado, então o `db.init_db()` que roda na
+    importação do app.py sempre bate num banco de teste, nunca no real."""
+    monkeypatch.setattr(db_module, "DB_PATH", tmp_path / "teste_rotas.db")
+    db_module.init_db()
+    import app as app_module
+
+    app_module.app.config["TESTING"] = True
+    with app_module.app.test_client() as client:
+        yield client
 
 
 @pytest.fixture
