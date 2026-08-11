@@ -135,8 +135,12 @@ def duracao_turno_segundos(horario_entrada, horario_saida, horario_saida_almoco=
     return max(0, delta.total_seconds())
 
 
-def dia_e_util_para_funcionario(f, data_obj):
-    """Diz se `data_obj` é dia de trabalho para esse funcionário (turno direto, escala em ciclo, ou fallback legado)."""
+def dia_e_util_para_funcionario(f, data_obj, feriados=None):
+    """Diz se `data_obj` é dia de trabalho para esse funcionário (turno direto, escala em ciclo, ou
+    fallback legado). `feriados`, se passado, é um conjunto de datas ISO ("AAAA-MM-DD") — nesses
+    dias ninguém tem expediente, não importa o turno/escala."""
+    if feriados and data_obj.isoformat() in feriados:
+        return False
     if f["escala_id"] is not None and f["escala_data_referencia"]:
         referencia = datetime.strptime(f["escala_data_referencia"], "%Y-%m-%d").date()
         ciclo_total = (f["escala_ciclo_dias_trabalho"] or 0) + (f["escala_ciclo_dias_descanso"] or 0)
@@ -152,13 +156,23 @@ def dia_e_util_para_funcionario(f, data_obj):
     return data_obj.weekday() in DIAS_UTEIS
 
 
-def horas_esperadas_no_dia_segundos(f, data_obj):
-    """Segundos esperados de trabalho nesse dia para esse funcionário — 0 se for dia de folga."""
-    if f["horario_entrada"] is None or not dia_e_util_para_funcionario(f, data_obj):
+def horas_esperadas_no_dia_segundos(f, data_obj, feriados=None):
+    """Segundos esperados de trabalho nesse dia para esse funcionário — 0 se for dia de folga
+    ou feriado."""
+    if f["horario_entrada"] is None or not dia_e_util_para_funcionario(f, data_obj, feriados):
         return 0
     return duracao_turno_segundos(
         f["horario_entrada"], f["horario_saida"], f["horario_saida_almoco"], f["horario_retorno_almoco"]
     )
+
+
+def obter_feriados_no_periodo(conn, data_inicio, data_fim):
+    """Conjunto de datas ISO ("AAAA-MM-DD") cadastradas como feriado dentro do período
+    (data_inicio/data_fim já em formato ISO string)."""
+    linhas = conn.execute(
+        "SELECT data FROM feriados WHERE data BETWEEN ? AND ?", (data_inicio, data_fim)
+    ).fetchall()
+    return {linha["data"] for linha in linhas}
 
 
 def calcular_atalhos_periodo(hoje=None):
@@ -214,6 +228,7 @@ def montar_historico_funcionario(conn, funcionario_id, data_inicio, data_fim):
     ausencias_por_data = {
         datetime.strptime(a["data"], "%Y-%m-%d").date(): a for a in ausencias
     }
+    feriados = obter_feriados_no_periodo(conn, data_inicio, data_fim)
 
     todas_as_datas = sorted(set(dias_por_data.keys()) | set(ausencias_por_data.keys()))
 
@@ -232,7 +247,7 @@ def montar_historico_funcionario(conn, funcionario_id, data_inicio, data_fim):
             horas_extras_texto = "-"
         else:
             horas_extras_texto = formatar_horas(
-                max(0, total_segundos - horas_esperadas_no_dia_segundos(funcionario, data_dia))
+                max(0, total_segundos - horas_esperadas_no_dia_segundos(funcionario, data_dia, feriados))
             )
 
         linhas.append(
@@ -378,6 +393,7 @@ def montar_extrato_banco_horas(conn, funcionario_id, data_inicio, data_fim):
 
 def calcular_horas_extras_hoje(conn):
     hoje = date.today().isoformat()
+    feriados = obter_feriados_no_periodo(conn, hoje, hoje)
     funcionarios = conn.execute(
         f"""SELECT funcionarios.id, funcionarios.turno_id, funcionarios.escala_id,
                    funcionarios.escala_data_referencia,
@@ -408,7 +424,9 @@ def calcular_horas_extras_hoje(conn):
     total_extras_seg = 0
     for f in funcionarios:
         for dia in dias_por_funcionario.get(f["id"], []):
-            total_extras_seg += max(0, dia["total_segundos"] - horas_esperadas_no_dia_segundos(f, dia["data"]))
+            total_extras_seg += max(
+                0, dia["total_segundos"] - horas_esperadas_no_dia_segundos(f, dia["data"], feriados)
+            )
     return total_extras_seg
 
 
@@ -444,6 +462,7 @@ def montar_espelho_mensal(conn, funcionario_id, ano, mes):
         (funcionario_id, data_inicio, data_fim),
     ).fetchall()
     ausencias_por_data = {datetime.strptime(a["data"], "%Y-%m-%d").date(): a for a in ausencias}
+    feriados = obter_feriados_no_periodo(conn, data_inicio, data_fim)
 
     linhas = []
     total_segundos_mes = 0
@@ -464,7 +483,9 @@ def montar_espelho_mensal(conn, funcionario_id, ano, mes):
             horas_extras_segundos = 0
             horas_extras_texto = "-"
         else:
-            horas_extras_segundos = max(0, total_segundos - horas_esperadas_no_dia_segundos(funcionario, data_dia))
+            horas_extras_segundos = max(
+                0, total_segundos - horas_esperadas_no_dia_segundos(funcionario, data_dia, feriados)
+            )
             horas_extras_texto = formatar_horas(horas_extras_segundos)
 
         total_segundos_mes += total_segundos
@@ -515,6 +536,8 @@ def calcular_stats_funcionarios_periodo(conn, data_inicio, data_fim, funcionario
 
     if not funcionarios:
         return {}
+
+    feriados = obter_feriados_no_periodo(conn, data_inicio, data_fim)
 
     ids_funcionarios = [f["id"] for f in funcionarios]
     placeholders = ",".join("?" * len(ids_funcionarios))
@@ -567,8 +590,8 @@ def calcular_stats_funcionarios_periodo(conn, data_inicio, data_fim, funcionario
 
         for d in dias:
             if f["horario_entrada"] is not None:
-                dia_util = dia_e_util_para_funcionario(f, d["data"])
-                horas_esperadas_dia = horas_esperadas_no_dia_segundos(f, d["data"])
+                dia_util = dia_e_util_para_funcionario(f, d["data"], feriados)
+                horas_esperadas_dia = horas_esperadas_no_dia_segundos(f, d["data"], feriados)
                 if dia_util:
                     entrada_dia, _saida_almoco_dia, _retorno_dia, saida_dia = preencher_colunas_historico(d["pares"])
                     limite_entrada = (
@@ -595,7 +618,7 @@ def calcular_stats_funcionarios_periodo(conn, data_inicio, data_fim, funcionario
         dias_uteis_considerados = [
             d for d in todas_as_datas_periodo
             if (not f["data_admissao"] or d >= f["data_admissao"])
-            and dia_e_util_para_funcionario(f, datetime.strptime(d, "%Y-%m-%d").date())
+            and dia_e_util_para_funcionario(f, datetime.strptime(d, "%Y-%m-%d").date(), feriados)
         ]
 
         faltas = sum(
@@ -797,9 +820,10 @@ def _chave_ordenacao_folha_ponto(f):
 
 def montar_folha_ponto_mensal(conn, ano, mes, funcionario_id=None):
     """Grade mensal: uma linha por funcionário ativo, um código curto por dia do mês
-    (P=presença, F=falta, ou o código de CODIGO_AUSENCIA). Célula em branco quando o dia
-    não é de trabalho pra pessoa (turno/escala), é anterior à admissão, ou ainda não chegou.
-    Se houver ponto batido E ausência no mesmo dia, a ausência prevalece no código.
+    (P=presença, F=falta, FD=feriado, ou o código de CODIGO_AUSENCIA). Célula em branco quando
+    o dia não é de trabalho pra pessoa (turno/escala), é anterior à admissão, ou ainda não
+    chegou. Se houver ponto batido E ausência no mesmo dia, a ausência prevalece no código;
+    feriado só aparece como FD se não tiver ausência nem ponto batido nesse dia.
     Linhas saem ordenadas por categoria (Gestão, Apoio Pedagógico, Professores — Efetivo
     antes de Contratado —, Outros/não informado) e depois por nome."""
     _, ultimo_dia = calendar.monthrange(ano, mes)
@@ -841,6 +865,7 @@ def montar_folha_ponto_mensal(conn, ano, mes, funcionario_id=None):
         [*ids_funcionarios, data_inicio.isoformat(), data_fim.isoformat()],
     ).fetchall()
     tipo_ausencia_por_dia = {(a["funcionario_id"], a["data"]): a["tipo"] for a in ausencias}
+    feriados = obter_feriados_no_periodo(conn, data_inicio.isoformat(), data_fim.isoformat())
 
     linhas = []
     for f in funcionarios:
@@ -858,7 +883,9 @@ def montar_folha_ponto_mensal(conn, ano, mes, funcionario_id=None):
                 codigos.append(CODIGO_AUSENCIA.get(tipo_ausencia, "OU"))
             elif iso in dias_com_ponto.get(f["id"], ()):
                 codigos.append("P")
-            elif dia_e_util_para_funcionario(f, data_dia):
+            elif iso in feriados:
+                codigos.append("FD")
+            elif dia_e_util_para_funcionario(f, data_dia, feriados):
                 codigos.append("F")
             else:
                 codigos.append("")

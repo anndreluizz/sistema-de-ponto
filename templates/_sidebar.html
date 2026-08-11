@@ -38,6 +38,10 @@
          class="{{ 'active' if request.endpoint == 'escalas' else '' }}">
         <i class="bi bi-arrow-repeat"></i><span>Escalas</span>
       </a>
+      <a href="{{ url_for('feriados') }}"
+         class="{{ 'active' if request.endpoint == 'feriados' else '' }}">
+        <i class="bi bi-calendar-x"></i><span>Feriados</span>
+      </a>
     {% endif %}
 
     {% if session.usuario_perfil == 'administrador' %}

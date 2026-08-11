@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf_input %}
+{% block titulo %}Feriados{% endblock %}
+{% block conteudo %}
+  <div class="row g-4">
+    <div class="col-lg-5">
+      <div class="card">
+        <div class="card-body">
+          <h2 class="h6 fw-bold mb-3"><i class="bi bi-plus-circle me-1"></i>Novo feriado</h2>
+          <form method="post" class="d-flex flex-column gap-2">
+            {{ csrf_input() }}
+            <div>
+              <label class="form-label small mb-1">Data</label>
+              <input type="date" name="data" class="form-control" required>
+            </div>
+            <div>
+              <label class="form-label small mb-1">Nome</label>
+              <input type="text" name="nome" class="form-control" placeholder="Ex: Independência do Brasil" required>
+            </div>
+            <button type="submit" class="btn btn-primary mt-1"><i class="bi bi-plus-lg me-1"></i>Adicionar</button>
+          </form>
+          <p class="text-secondary small mt-3 mb-0">
+            Nos dias cadastrados aqui, ninguém conta como falta ou atraso — a Folha de Ponto
+            mostra o código <strong>FD</strong> (feriado) pra quem não bateu ponto. Cadastre um
+            por um: datas fixas (ex: 25/12) precisam ser adicionadas de novo a cada ano; feriados
+            móveis (Carnaval, Sexta-feira Santa) e pontos facultativos municipais também entram
+            aqui, na data certa de cada ano.
+          </p>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-7">
+      <div class="card">
+        <div class="card-body">
+          <h2 class="h6 fw-bold mb-3">Feriados cadastrados</h2>
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead>
+                <tr>
+                  <th>Data</th><th>Nome</th><th class="text-end">Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for f in feriados %}
+                <tr>
+                  <td>{{ f.data[8:10] }}/{{ f.data[5:7] }}/{{ f.data[0:4] }}</td>
+                  <td>{{ f.nome }}</td>
+                  <td class="text-end">
+                    <details class="d-inline-block">
+                      <summary class="btn btn-sm btn-outline-secondary" title="Editar">
+                        <i class="bi bi-pencil"></i>
+                      </summary>
+                      <form method="post" action="{{ url_for('editar_feriado', feriado_id=f.id) }}"
+                            class="d-flex flex-column gap-2 mt-2 p-2 border rounded bg-light text-start">
+                        {{ csrf_input() }}
+                        <input type="date" name="data" value="{{ f.data }}" class="form-control form-control-sm">
+                        <input type="text" name="nome" value="{{ f.nome }}" class="form-control form-control-sm" placeholder="Nome">
+                        <button type="submit" class="btn btn-sm btn-primary">Salvar</button>
+                      </form>
+                    </details>
+                    <form method="post" action="{{ url_for('excluir_feriado', feriado_id=f.id) }}"
+                          class="form-confirmar d-inline" data-confirmar="Excluir o feriado '{{ f.nome }}'?">
+                      {{ csrf_input() }}
+                      <button type="submit" class="btn btn-sm btn-outline-danger" title="Excluir">
+                        <i class="bi bi-trash"></i>
+                      </button>
+                    </form>
+                  </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="3" class="text-secondary">Nenhum feriado cadastrado ainda.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}

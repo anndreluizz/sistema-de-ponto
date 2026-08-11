@@ -114,6 +114,27 @@ def test_horas_esperadas_no_dia_segundos_sem_turno():
     assert horas_esperadas_no_dia_segundos(f, date(2026, 1, 5)) == 0
 
 
+def test_dia_e_util_para_funcionario_feriado_bloqueia_mesmo_dia_normalmente_util():
+    f = {"escala_id": None, "turno_id": 1, "turno_dias_semana": "0,1,2,3,4"}
+    assert dia_e_util_para_funcionario(f, date(2026, 1, 5)) is True  # segunda, sem feriado
+    assert dia_e_util_para_funcionario(f, date(2026, 1, 5), feriados={"2026-01-05"}) is False
+    # feriado em outra data nao afeta o dia perguntado
+    assert dia_e_util_para_funcionario(f, date(2026, 1, 5), feriados={"2026-01-06"}) is True
+
+
+def test_horas_esperadas_no_dia_segundos_feriado():
+    f = {
+        "escala_id": None,
+        "turno_id": 1,
+        "turno_dias_semana": "0,1,2,3,4",
+        "horario_entrada": "08:00",
+        "horario_saida": "17:00",
+        "horario_saida_almoco": None,
+        "horario_retorno_almoco": None,
+    }
+    assert horas_esperadas_no_dia_segundos(f, date(2026, 1, 5), feriados={"2026-01-05"}) == 0
+
+
 # ---------- Nível 2: usam banco sintético (fixtures `conn` + `cenario_semana`, ver conftest.py) ----------
 
 
@@ -316,3 +337,54 @@ def test_montar_comparativo_mensal_soma_por_mes(conn, cenario_dois_meses):
     assert por_mes[(2026, 1)]["total_trabalhado_horas"] == 18.0  # 2 dias * 9h
     assert por_mes[(2026, 1)]["total_atrasos"] == 0
     assert por_mes[(2026, 2)]["total_trabalhado_horas"] == 9.0  # 1 dia * 9h
+
+
+# ---------- Feriados (integrados na cascata acima) ----------
+
+
+def _cadastrar_feriado(conn, data_iso, nome="Feriado Teste"):
+    conn.execute(
+        "INSERT INTO feriados (data, nome, criado_em) VALUES (?, ?, datetime('now'))", (data_iso, nome)
+    )
+    conn.commit()
+
+
+def test_calcular_stats_funcionarios_periodo_feriado_nao_conta_falta(conn, cenario_semana):
+    # antes do feriado, o dia 07/01 (quarta) era falta nao justificada do Beto
+    stats_antes = calcular_stats_funcionarios_periodo(conn, "2026-01-05", "2026-01-09")
+    assert stats_antes[cenario_semana["beto_id"]]["faltas"] == 1
+
+    _cadastrar_feriado(conn, "2026-01-07")
+
+    stats_depois = calcular_stats_funcionarios_periodo(conn, "2026-01-05", "2026-01-09")
+    assert stats_depois[cenario_semana["beto_id"]]["faltas"] == 0
+    assert stats_depois[cenario_semana["beto_id"]]["dias_uteis"] == 4  # 5 dias uteis da semana - 1 que virou feriado
+
+
+def test_montar_folha_ponto_mensal_feriado_mostra_fd_sem_atividade(conn, cenario_semana):
+    _cadastrar_feriado(conn, "2026-01-07")  # dia da falta do Beto vira feriado
+
+    resultado = montar_folha_ponto_mensal(conn, 2026, 1)
+    por_nome = {linha["funcionario"]["nome"]: linha["codigos"] for linha in resultado["linhas"]}
+
+    assert por_nome["Beto Testado"][6] == "FD"  # dia 7 (indice 6): sem ponto, sem ausencia -> feriado
+
+
+def test_montar_folha_ponto_mensal_presenca_prevalece_sobre_feriado(conn, cenario_semana):
+    _cadastrar_feriado(conn, "2026-01-05")  # dia em que Ana bateu ponto normalmente
+
+    resultado = montar_folha_ponto_mensal(conn, 2026, 1)
+    por_nome = {linha["funcionario"]["nome"]: linha["codigos"] for linha in resultado["linhas"]}
+
+    # Ana trabalhou nesse feriado -> continua "P", nao vira "FD"
+    assert por_nome["Ana Pontual"][4] == "P"
+
+
+def test_montar_folha_ponto_mensal_ausencia_prevalece_sobre_feriado(conn, cenario_semana):
+    _cadastrar_feriado(conn, "2026-01-08")  # dia em que Beto tem ausencia (ferias)
+
+    resultado = montar_folha_ponto_mensal(conn, 2026, 1)
+    por_nome = {linha["funcionario"]["nome"]: linha["codigos"] for linha in resultado["linhas"]}
+
+    # ausencia (ferias) continua prevalecendo sobre o feriado
+    assert por_nome["Beto Testado"][7] == "FE"

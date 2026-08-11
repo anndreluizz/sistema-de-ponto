@@ -91,6 +91,7 @@ NAVEGACAO = {
     "setores": {"titulo": "Setores", "trilha": [("Funcionários", "funcionarios")]},
     "turnos": {"titulo": "Turnos", "trilha": [("Funcionários", "funcionarios")]},
     "escalas": {"titulo": "Escalas", "trilha": [("Funcionários", "funcionarios")]},
+    "feriados": {"titulo": "Feriados", "trilha": [("Funcionários", "funcionarios")]},
     "configuracoes": {"titulo": "Configurações", "trilha": []},
     "trocar_senha": {"titulo": "Trocar senha", "trilha": []},
     "usuarios": {"titulo": "Usuários", "trilha": []},
@@ -663,6 +664,7 @@ def calcular_dashboard(conn):
         r["funcionario_id"]
         for r in conn.execute("SELECT funcionario_id FROM ausencias WHERE data = ?", (hoje,)).fetchall()
     }
+    feriados_hoje = relatorios_service.obter_feriados_no_periodo(conn, hoje, hoje)
 
     presentes, ausentes, atrasados, faltas, em_intervalo, saidas_antecipadas = [], [], [], [], [], []
 
@@ -677,7 +679,9 @@ def calcular_dashboard(conn):
             ausentes.append(f)
 
         tem_turno_efetivo = f["horario_entrada"] is not None
-        dia_util_hoje = tem_turno_efetivo and relatorios_service.dia_e_util_para_funcionario(f, hoje_date)
+        dia_util_hoje = tem_turno_efetivo and relatorios_service.dia_e_util_para_funcionario(
+            f, hoje_date, feriados_hoje
+        )
 
         if dia_util_hoje:
             limite = (
@@ -1499,6 +1503,105 @@ def excluir_setor(setor_id):
     finally:
         conn.close()
     return redirect(url_for("setores"))
+
+
+def _ler_dados_feriado_form():
+    return {
+        "data": request.form.get("data", "").strip(),
+        "nome": request.form.get("nome", "").strip(),
+    }
+
+
+def _validar_dados_feriado(dados):
+    if not dados["data"] or not dados["nome"]:
+        return "Informe a data e o nome do feriado."
+    try:
+        datetime.strptime(dados["data"], "%Y-%m-%d")
+    except ValueError:
+        return "Data inválida."
+    return None
+
+
+@app.route("/admin/feriados", methods=["GET", "POST"])
+@login_obrigatorio
+@perfil_obrigatorio(*PERFIS_GESTAO)
+def feriados():
+    conn = db.get_db()
+    try:
+        if request.method == "POST":
+            dados = _ler_dados_feriado_form()
+            erro = _validar_dados_feriado(dados)
+            if erro:
+                flash(erro, "erro")
+            else:
+                try:
+                    cursor = conn.execute(
+                        "INSERT INTO feriados (data, nome, criado_por, criado_em) VALUES (?, ?, ?, ?)",
+                        (
+                            dados["data"], dados["nome"], session.get("usuario_login"),
+                            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        ),
+                    )
+                    conn.commit()
+                    registrar_auditoria(
+                        conn, "criar", "feriado", cursor.lastrowid, f"data={dados['data']}; nome={dados['nome']}"
+                    )
+                    flash("Feriado adicionado.", "sucesso")
+                except sqlite3.IntegrityError:
+                    flash("Já existe um feriado cadastrado nessa data.", "erro")
+            return redirect(url_for("feriados"))
+
+        lista = conn.execute("SELECT * FROM feriados ORDER BY data").fetchall()
+        return render_template("feriados.html", feriados=lista)
+    finally:
+        conn.close()
+
+
+@app.route("/admin/feriados/<int:feriado_id>/editar", methods=["POST"])
+@login_obrigatorio
+@perfil_obrigatorio(*PERFIS_GESTAO)
+def editar_feriado(feriado_id):
+    dados = _ler_dados_feriado_form()
+    erro = _validar_dados_feriado(dados)
+    conn = db.get_db()
+    try:
+        if erro:
+            flash(erro, "erro")
+        else:
+            try:
+                conn.execute(
+                    "UPDATE feriados SET data = ?, nome = ? WHERE id = ?",
+                    (dados["data"], dados["nome"], feriado_id),
+                )
+                conn.commit()
+                registrar_auditoria(
+                    conn, "editar", "feriado", feriado_id, f"data={dados['data']}; nome={dados['nome']}"
+                )
+                flash("Feriado atualizado.", "sucesso")
+            except sqlite3.IntegrityError:
+                flash("Já existe um feriado cadastrado nessa data.", "erro")
+    finally:
+        conn.close()
+    return redirect(url_for("feriados"))
+
+
+@app.route("/admin/feriados/<int:feriado_id>/excluir", methods=["POST"])
+@login_obrigatorio
+@perfil_obrigatorio(*PERFIS_GESTAO)
+def excluir_feriado(feriado_id):
+    conn = db.get_db()
+    try:
+        feriado = conn.execute("SELECT nome, data FROM feriados WHERE id = ?", (feriado_id,)).fetchone()
+        conn.execute("DELETE FROM feriados WHERE id = ?", (feriado_id,))
+        conn.commit()
+        registrar_auditoria(
+            conn, "excluir", "feriado", feriado_id,
+            f"data={feriado['data']}; nome={feriado['nome']}" if feriado else None,
+        )
+        flash("Feriado excluído.", "sucesso")
+    finally:
+        conn.close()
+    return redirect(url_for("feriados"))
 
 
 def _ler_dados_turno_form():

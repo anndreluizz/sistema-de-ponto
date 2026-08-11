@@ -116,6 +116,22 @@ def _migrar_funcionarios_categoria(conn):
         conn.commit()
 
 
+def _migrar_feriados(conn):
+    conn.executescript(
+        """
+        CREATE TABLE IF NOT EXISTS feriados (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            data TEXT NOT NULL UNIQUE,
+            nome TEXT NOT NULL,
+            criado_por TEXT,
+            criado_em TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_feriados_data ON feriados(data);
+        """
+    )
+    conn.commit()
+
+
 def _migrar_registros(conn):
     colunas = _colunas_existentes(conn, "registros")
     novas_colunas_simples = {
@@ -421,6 +437,7 @@ def init_db():
         _migrar_ausencias_tipos(conn)
         _migrar_documentos(conn)
         _migrar_auditoria(conn)
+        _migrar_feriados(conn)
         _seed_configuracoes(conn)
 
         ja_existe_admin = conn.execute("SELECT 1 FROM admin LIMIT 1").fetchone()

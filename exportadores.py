@@ -186,7 +186,7 @@ def _rotulo_vinculo(vinculo):
 
 
 LEGENDA_CODIGOS = [
-    ("P", "Presença"), ("F", "Falta"), ("AT", "Atestado"), ("FE", "Férias"),
+    ("P", "Presença"), ("F", "Falta"), ("FD", "Feriado"), ("AT", "Atestado"), ("FE", "Férias"),
     ("LC", "Licença"), ("FG", "Folga"), ("LM", "Lic. maternidade/paternidade"),
     ("FL", "Falecimento"), ("AB", "Abono legal"), ("OU", "Outro"),
 ]
