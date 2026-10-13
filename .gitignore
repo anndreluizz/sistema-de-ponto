@@ -24,3 +24,7 @@ __pycache__/
 
 # Configuração interna do Claude Code, não faz parte do projeto
 .claude/
+
+# Log de erros do servidor e restos de restauração interrompida
+erros.log*
+ponto.db.tmp-*

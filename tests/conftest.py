@@ -34,6 +34,12 @@ def cliente(tmp_path, monkeypatch):
     db_module.init_db()
     import app as app_module
 
+    # Toda página logada dispara o backup automático: sem isso, os testes gravavam zips do
+    # banco de teste em backups/auto/ (pasta REAL) e o sistema pulava o backup verdadeiro.
+    monkeypatch.setattr(app_module, "BACKUPS_AUTO_DIR", tmp_path / "backups_auto")
+    for nome in ("FOTOS_DIR", "QRCODES_DIR", "UPLOADS_DIR", "DOCUMENTOS_DIR"):
+        monkeypatch.setattr(app_module, nome, tmp_path / nome.lower())
+
     app_module.app.config["TESTING"] = True
     with app_module.app.test_client() as client:
         yield client

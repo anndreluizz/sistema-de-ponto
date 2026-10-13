@@ -267,3 +267,56 @@ def test_senha_padrao_obriga_troca_antes_de_usar_o_sistema(cliente):
         data={"csrf_token": token, "senha_atual": "admin123", "nova_senha": "NovaSenha!9", "confirmar_senha": "NovaSenha!9"},
     )
     assert cliente.get("/admin/funcionarios").status_code == 200
+
+
+# --- Backup automático (roda numa thread, sem requisição) ------------------
+
+
+def test_backup_automatico_roda_sem_requisicao_e_audita_falha(cliente, tmp_path):
+    import app as app_module
+
+    app_module.verificar_backup_automatico()
+    assert len(list(app_module.BACKUPS_AUTO_DIR.glob("auto-*.zip"))) == 1
+
+    # pasta de destino extra inexistente: backup local continua, falha vai pra auditoria
+    conexao = db_module.get_db()
+    conexao.execute("UPDATE configuracoes SET backup_pasta_destino = ? WHERE id = 1", (str(tmp_path / "sumiu"),))
+    conexao.commit()
+    for zip_antigo in app_module.BACKUPS_AUTO_DIR.glob("auto-*.zip"):
+        zip_antigo.unlink()
+    app_module.verificar_backup_automatico()
+    linha = conexao.execute(
+        "SELECT usuario FROM auditoria WHERE acao = 'backup_automatico_falhou'"
+    ).fetchone()
+    conexao.close()
+    assert linha["usuario"] == "sistema"
+    assert len(list(app_module.BACKUPS_AUTO_DIR.glob("auto-*.zip"))) == 1
+
+
+def test_restaurar_recusa_backup_corrompido(tmp_path):
+    import zipfile
+
+    import app as app_module
+
+    caminho_zip = tmp_path / "ruim.zip"
+    with zipfile.ZipFile(caminho_zip, "w") as zf:
+        zf.writestr("ponto.db", b"isto nao e um banco sqlite" * 100)
+    try:
+        app_module.validar_backup_zip(caminho_zip)
+        assert False, "deveria ter recusado"
+    except ValueError as erro:
+        assert "corrompido" in str(erro)
+
+
+def test_bater_ponto_duas_vezes_seguidas_registra_so_uma(cliente):
+    _criar_funcionario("DUPLO123")
+    _criar_usuario("admin_duplo", "SenhaForte123!", "administrador")
+    _login(cliente, "admin_duplo", "SenhaForte123!")
+    token = _csrf_token(cliente.get("/admin/configuracoes").get_data(as_text=True))
+    cliente.post("/admin/totem/autorizar", data={"csrf_token": token})
+
+    assert cliente.post("/api/bater-ponto", json={"codigo": "DUPLO123"}).status_code == 200
+    assert cliente.post("/api/bater-ponto", json={"codigo": "DUPLO123"}).status_code == 429
+    conexao = db_module.get_db()
+    assert conexao.execute("SELECT COUNT(*) c FROM registros").fetchone()["c"] == 1
+    conexao.close()

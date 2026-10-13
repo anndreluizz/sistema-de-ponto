@@ -14,19 +14,48 @@ if not exist venv (
     )
 )
 
-echo Instalando/atualizando dependencias, aguarde...
-venv\Scripts\python.exe -m pip install -q --upgrade pip
-venv\Scripts\python.exe -m pip install -q -r requirements.txt
+REM Se o servidor ja estiver rodando (atalho clicado duas vezes), so abre o navegador.
+netstat -ano | findstr /r /c:":5000 .*LISTENING" >nul
+if not errorlevel 1 (
+    echo O sistema ja esta rodando. Abrindo o navegador...
+    start "" http://127.0.0.1:5000/
+    exit /b 0
+)
 
-REM Alguns antivirus/politicas do Windows (Controle de Aplicativos) bloqueiam
-REM arquivos .pyd compilados que o pip instala. Removemos os do fontTools
-REM (usado para gerar PDF) para que ele use as versoes em Python puro, que
-REM ja vem junto e funcionam identico, só um pouco mais devagar.
-venv\Scripts\python.exe -c "import pathlib; [p.unlink() for p in pathlib.Path('venv/Lib/site-packages/fontTools').rglob('*.pyd')]" 2>nul
+REM So chama o pip se faltar alguma dependencia: antes ele rodava toda vez e,
+REM sem internet, atrasava ou travava a inicializacao.
+venv\Scripts\python.exe -c "import flask, flask_wtf, waitress, PIL, fpdf, openpyxl, qrcode" 2>nul
+if errorlevel 1 (
+    echo Instalando dependencias - precisa de internet so desta vez, aguarde...
+    venv\Scripts\python.exe -m pip install -q -r requirements.txt
+    if errorlevel 1 (
+        echo.
+        echo ERRO: nao foi possivel instalar as dependencias.
+        echo Verifique a conexao com a internet e rode este arquivo de novo.
+        pause
+        exit /b 1
+    )
+
+    REM Alguns antivirus/politicas do Windows ^(Controle de Aplicativos^) bloqueiam
+    REM arquivos .pyd compilados que o pip instala. Removemos os do fontTools
+    REM ^(usado para gerar PDF^) para que ele use as versoes em Python puro.
+    venv\Scripts\python.exe -c "import pathlib; [p.unlink() for p in pathlib.Path('venv/Lib/site-packages/fontTools').rglob('*.pyd')]" 2>nul
+)
+
+venv\Scripts\python.exe -c "import flask, flask_wtf, waitress, PIL, fpdf, openpyxl, qrcode"
+if errorlevel 1 (
+    echo.
+    echo ERRO: as dependencias estao instaladas mas nao carregam ^(veja a mensagem acima^).
+    echo Se aparecer algo sobre "bloqueado" ou "Controle de Aplicativos", o Windows
+    echo esta impedindo um arquivo do Python de rodar - chame o suporte de TI.
+    pause
+    exit /b 1
+)
 
 echo.
 echo Iniciando o servidor do sistema de ponto...
-start "Servidor - Sistema de Ponto (nao feche esta janela)" venv\Scripts\python.exe -m waitress --listen=0.0.0.0:5000 app:app
+REM "cmd /k" mantem a janela aberta se o servidor parar com erro, pra dar pra ler o motivo.
+start "Servidor - Sistema de Ponto (nao feche esta janela)" cmd /k venv\Scripts\python.exe -m waitress --listen=0.0.0.0:5000 app:app
 
 ping -n 3 127.0.0.1 >nul
 

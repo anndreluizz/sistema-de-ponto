@@ -213,9 +213,13 @@ Menu "Backup" (so Administrador):
   vez em quando (ex: uma vez por mes).
 - O sistema tambem gera sozinho um backup automatico (guarda os ultimos
   14), listado na mesma tela. A frequencia é configuravel em
-  "Configuracoes" (a cada 6h, 12h, 24h, 48h ou uma vez por semana) — isso
-  so é verificado quando alguem acessa o sistema, entao se o computador
-  ficar muito tempo sem uso, o backup so roda no proximo acesso.
+  "Configuracoes" (a cada 6h, 12h, 24h, 48h ou uma vez por semana). O
+  sistema confere sozinho a cada hora, sem ninguem precisar entrar no
+  painel — basta a janela do servidor estar aberta.
+- RECOMENDADO: configure a "pasta de destino extra" (abaixo) apontando
+  para um pendrive ou pasta do OneDrive/Google Drive. Sem isso, todas as
+  copias ficam no mesmo disco do computador — se o disco der defeito,
+  perde-se o banco E os backups juntos.
 - Ainda em "Configuracoes", da pra informar uma "pasta de destino extra" —
   toda vez que um backup automatico for gerado, o sistema tambem copia o
   arquivo pra essa pasta. É util se essa pasta ja for sincronizada por um

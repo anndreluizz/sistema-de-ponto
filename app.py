@@ -3,16 +3,20 @@ import csv
 import hashlib
 import hmac
 import io
+import logging
 import os
 import re
 import secrets
 import shutil
 import sqlite3
+import sys
 import tempfile
+import threading
 import time
 import zipfile
 from datetime import date, datetime, timedelta
 from functools import wraps
+from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
 import qrcode
@@ -20,6 +24,7 @@ from flask import (
     Flask,
     abort,
     flash,
+    has_request_context,
     jsonify,
     redirect,
     render_template,
@@ -337,7 +342,6 @@ def login_obrigatorio(f):
         if session.get("senha_padrao") and request.endpoint not in ("trocar_senha", "logout"):
             flash("Por segurança, troque a senha padrão antes de continuar.", "erro")
             return redirect(url_for("trocar_senha"))
-        verificar_backup_automatico()
         return f(*args, **kwargs)
 
     return decorado
@@ -395,6 +399,15 @@ def interpretar_user_agent(texto):
 
 
 def registrar_auditoria(conn, acao, entidade, entidade_id=None, detalhes=None):
+    if not has_request_context():
+        # Chamado pelo agendador de backup (thread em segundo plano, sem usuário nem navegador).
+        conn.execute(
+            """INSERT INTO auditoria (usuario, perfil, acao, entidade, entidade_id, detalhes, timestamp)
+               VALUES ('sistema', 'sistema', ?, ?, ?, ?, ?)""",
+            (acao, entidade, entidade_id, detalhes, datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
+        )
+        conn.commit()
+        return
     navegador, sistema_operacional = interpretar_user_agent(request.user_agent.string)
     conn.execute(
         """INSERT INTO auditoria (usuario, perfil, acao, entidade, entidade_id, detalhes, ip, timestamp,
@@ -562,6 +575,12 @@ def validar_backup_zip(caminho_zip):
             caminho_extraido = zf.extract("ponto.db", path=pasta_tmp)
             conn_teste = sqlite3.connect(caminho_extraido)
             try:
+                try:
+                    integro = conn_teste.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
+                except sqlite3.DatabaseError:
+                    integro = False
+                if not integro:
+                    raise ValueError("O banco dentro do backup está corrompido — escolha outro arquivo.")
                 tabelas = {
                     linha[0]
                     for linha in conn_teste.execute(
@@ -616,8 +635,7 @@ def _datahora_backup_auto(caminho):
 
 
 def verificar_backup_automatico():
-    """Roda a cada carregamento de página autenticada (não há agendador em segundo plano —
-    se ninguém acessar o sistema, o backup só roda no próximo acesso após o intervalo vencer)."""
+    """Chamado a cada hora por _agendador_backup (thread em segundo plano)."""
     conn = db.get_db()
     try:
         config = conn.execute(
@@ -959,6 +977,9 @@ def api_bater_ponto():
                 403,
             )
 
+        # Trava de escrita antes de ler a última batida: duas leituras simultâneas do mesmo
+        # crachá (ex.: dois aparelhos) não conseguem passar as duas pelo cooldown.
+        conn.execute("BEGIN IMMEDIATE")
         agora = datetime.now()
         inicio_do_dia = agora.strftime("%Y-%m-%d") + " 00:00:00"
         ultimo = conn.execute(
@@ -3038,6 +3059,7 @@ def backup_restaurar():
                 time.sleep(0.5)
 
         if not sucesso_troca:
+            caminho_tmp_troca.unlink(missing_ok=True)
             flash("Não foi possível substituir o banco (arquivo em uso). Tente novamente em alguns segundos.", "erro")
             return redirect(url_for("backup"))
 
@@ -3058,5 +3080,40 @@ def backup_restaurar():
     return redirect(url_for("login"))
 
 
+@app.errorhandler(500)
+def erro_interno(erro):
+    return (
+        "<h1>Ocorreu um erro inesperado</h1><p>O problema foi registrado no arquivo erros.log, "
+        "na pasta do sistema. Volte à página anterior e tente de novo; se continuar, avise o "
+        "administrador.</p>",
+        500,
+    )
+
+
+def _agendador_backup():
+    """Antes o backup só rodava quando alguém abria o painel logado — e o totem nunca dispara
+    isso, então passavam semanas sem backup. Agora checa sozinho a cada hora."""
+    while True:
+        try:
+            verificar_backup_automatico()
+        except Exception:
+            app.logger.exception("Falha no agendador de backup automático")
+        time.sleep(3600)
+
+
+# Fora dos testes (que importam este módulo com banco temporário): log de erros em arquivo
+# e o agendador de backup — senão os testes gravariam backup do banco de teste na pasta real.
+if "pytest" not in sys.modules:
+    logging.basicConfig(
+        level=logging.WARNING,
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+        handlers=[
+            logging.StreamHandler(),
+            RotatingFileHandler(BASE_DIR / "erros.log", maxBytes=1_000_000, backupCount=3, encoding="utf-8"),
+        ],
+    )
+    threading.Thread(target=_agendador_backup, daemon=True, name="backup-automatico").start()
+
+
 if __name__ == "__main__":
-    app.run(host="127.0.0.1", port=5000, debug=True)
+    app.run(host="127.0.0.1", port=5000, debug=True, use_reloader=False)
