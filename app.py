@@ -1,3 +1,4 @@
+import base64
 import csv
 import hashlib
 import hmac
@@ -24,6 +25,7 @@ from flask import (
     render_template,
     request,
     send_file,
+    send_from_directory,
     session,
     url_for,
 )
@@ -38,8 +40,10 @@ import relatorios_service
 
 BASE_DIR = Path(__file__).resolve().parent
 SECRET_KEY_PATH = BASE_DIR / ".secret_key"
-QRCODES_DIR = BASE_DIR / "static" / "qrcodes"
-FOTOS_DIR = BASE_DIR / "static" / "fotos"
+# Fotos e QR Codes ficam fora de static/ (que é servida sem login): o QR contém o código
+# do crachá, e com ele qualquer um na rede bateria ponto no nome de outra pessoa.
+QRCODES_DIR = BASE_DIR / "uploads_privados" / "qrcodes"
+FOTOS_DIR = BASE_DIR / "uploads_privados" / "fotos"
 UPLOADS_DIR = BASE_DIR / "static" / "uploads"
 DOCUMENTOS_DIR = BASE_DIR / "uploads_privados" / "documentos"
 BACKUPS_AUTO_DIR = BASE_DIR / "backups" / "auto"
@@ -139,10 +143,27 @@ app = Flask(__name__)
 app.config["SECRET_KEY"] = carregar_ou_criar_secret_key()
 app.config["MAX_CONTENT_LENGTH"] = 100 * 1024 * 1024
 app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(minutes=60)
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 
 csrf = CSRFProtect(app)
 
 db.init_db()
+
+
+def _mover_arquivos_de_static():
+    """Migração única: fotos/QR gerados antes da mudança para uploads_privados/."""
+    for antiga, nova in ((BASE_DIR / "static" / "fotos", FOTOS_DIR), (BASE_DIR / "static" / "qrcodes", QRCODES_DIR)):
+        if not antiga.is_dir():
+            continue
+        nova.mkdir(parents=True, exist_ok=True)
+        for arquivo in antiga.iterdir():
+            if arquivo.is_file() and not (nova / arquivo.name).exists():
+                shutil.move(str(arquivo), nova / arquivo.name)
+        if not any(antiga.iterdir()):
+            antiga.rmdir()
+
+
+_mover_arquivos_de_static()
 
 
 @app.context_processor
@@ -246,12 +267,14 @@ def injetar_notificacoes():
         ).fetchall():
             ausencias_por_funcionario.setdefault(r["funcionario_id"], set()).add(r["data"])
 
+        feriados = relatorios_service.obter_feriados_no_periodo(conn, data_minima, hoje.isoformat())
+
         sem_ponto = []
         for f in ativos:
             if f["horario_entrada"] is None:
                 continue
             contagem = _dias_uteis_sem_ponto(
-                f, ultimos.get(f["id"]), ausencias_por_funcionario.get(f["id"], set()), hoje
+                f, ultimos.get(f["id"]), ausencias_por_funcionario.get(f["id"], set()) | feriados, hoje
             )
             if contagem >= LIMIAR_DIAS_UTEIS_SEM_PONTO:
                 sem_ponto.append(f["nome"])
@@ -298,6 +321,22 @@ def login_obrigatorio(f):
     def decorado(*args, **kwargs):
         if not session.get("usuario_id"):
             return redirect(url_for("login", proximo=request.path))
+        # Reconsulta o banco a cada página: inativar ou rebaixar alguém vale na hora,
+        # não só no próximo login.
+        conn = db.get_db()
+        try:
+            usuario = conn.execute(
+                "SELECT perfil FROM usuarios WHERE id = ? AND ativo = 1", (session["usuario_id"],)
+            ).fetchone()
+        finally:
+            conn.close()
+        if not usuario:
+            session.clear()
+            return redirect(url_for("login"))
+        session["usuario_perfil"] = usuario["perfil"]
+        if session.get("senha_padrao") and request.endpoint not in ("trocar_senha", "logout"):
+            flash("Por segurança, troque a senha padrão antes de continuar.", "erro")
+            return redirect(url_for("trocar_senha"))
         verificar_backup_automatico()
         return f(*args, **kwargs)
 
@@ -675,7 +714,11 @@ def calcular_dashboard(conn):
         if ultimo is not None and ultimo["tipo"] == "entrada":
             presentes.append(f)
 
-        if primeiro is None and fid not in ausencias_hoje:
+        # Sábado, feriado ou folga da escala não é "ausente" — a pessoa nem trabalharia hoje.
+        trabalha_hoje = relatorios_service.dia_e_util_para_funcionario(f, hoje_date, feriados_hoje) and not (
+            f["data_admissao"] and f["data_admissao"] > hoje
+        )
+        if primeiro is None and fid not in ausencias_hoje and trabalha_hoje:
             ausentes.append(f)
 
         tem_turno_efetivo = f["horario_entrada"] is not None
@@ -834,12 +877,60 @@ def kiosk():
         config = conn.execute("SELECT * FROM configuracoes WHERE id = 1").fetchone()
     finally:
         conn.close()
-    return render_template("kiosk.html", config=config)
+    return render_template("kiosk.html", config=config, totem_autorizado=totem_autorizado())
+
+
+COOKIE_TOTEM = "totem_autorizado"
+
+
+def _token_totem():
+    # ponytail: token derivado da secret_key — revogar um totem perdido exige apagar .secret_key
+    # (desloga todos e invalida todos os totens); tabela de totens se precisar revogar um só.
+    return hmac.new(app.config["SECRET_KEY"].encode(), b"totem", hashlib.sha256).hexdigest()
+
+
+def totem_autorizado():
+    return hmac.compare_digest(request.cookies.get(COOKIE_TOTEM, ""), _token_totem())
+
+
+@app.route("/admin/totem/autorizar", methods=["POST"])
+@login_obrigatorio
+@perfil_obrigatorio(*PERFIS_SOMENTE_ADMIN)
+def autorizar_totem():
+    conn = db.get_db()
+    try:
+        registrar_auditoria(conn, "autorizar_totem", "totem", detalhes=f"ip={request.remote_addr}")
+    finally:
+        conn.close()
+    resposta = redirect(url_for("kiosk"))
+    resposta.set_cookie(
+        COOKIE_TOTEM, _token_totem(), max_age=10 * 365 * 24 * 3600, httponly=True, samesite="Lax"
+    )
+    return resposta
+
+
+@app.route("/admin/arquivos/<pasta>/<nome>")
+@login_obrigatorio
+def arquivo_privado(pasta, nome):
+    pastas = {"fotos": FOTOS_DIR, "qrcodes": QRCODES_DIR}
+    if pasta not in pastas:
+        abort(404)
+    return send_from_directory(pastas[pasta], nome)
+
+
+def _foto_como_data_uri(foto):
+    """O totem não tem login, então recebe a foto embutida na resposta em vez de uma URL."""
+    caminho = FOTOS_DIR / Path(foto).name
+    if not caminho.is_file():
+        return None
+    return "data:image/jpeg;base64," + base64.b64encode(caminho.read_bytes()).decode()
 
 
 @app.route("/api/bater-ponto", methods=["POST"])
 @csrf.exempt
 def api_bater_ponto():
+    if not totem_autorizado():
+        return jsonify({"ok": False, "erro": "Este aparelho não está autorizado como totem."}), 403
     dados = request.get_json(silent=True) or {}
     codigo = (dados.get("codigo") or "").strip()
     if not codigo:
@@ -896,7 +987,7 @@ def api_bater_ponto():
                 "ok": True,
                 "nome": funcionario["nome"],
                 "cargo": funcionario["cargo"],
-                "foto": url_for("static", filename=funcionario["foto"]) if funcionario["foto"] else None,
+                "foto": _foto_como_data_uri(funcionario["foto"]) if funcionario["foto"] else None,
                 "tipo": tipo,
                 "horario": agora.strftime("%H:%M:%S"),
             }
@@ -986,13 +1077,19 @@ def login():
                         (registro["id"],),
                     )
                     conn.commit()
+                session.clear()
                 session.permanent = True
+                if senha == db.ADMIN_PADRAO_SENHA:
+                    session["senha_padrao"] = True
                 session["usuario_id"] = registro["id"]
                 session["usuario_login"] = registro["usuario"]
                 session["usuario_nome"] = registro["nome"] or registro["usuario"]
                 session["usuario_perfil"] = registro["perfil"]
                 registrar_auditoria(conn, "login_sucesso", "usuario", registro["id"])
-                proximo = request.args.get("proximo") or url_for("dashboard")
+                proximo = request.args.get("proximo") or ""
+                # Só caminhos internos: "//site" ou "/\site" o navegador trata como outro domínio.
+                if not proximo.startswith("/") or proximo[1:2] in ("/", "\\"):
+                    proximo = url_for("dashboard")
                 return redirect(proximo)
 
             if registro:
@@ -1621,6 +1718,11 @@ def _ler_dados_turno_form():
 def _validar_dados_turno(dados):
     if not dados["nome"] or not dados["horario_entrada"] or not dados["horario_saida"]:
         return "Preencha nome, horário de entrada e de saída."
+    if dados["horario_saida"] <= dados["horario_entrada"]:
+        # ponytail: turno que vira a meia-noite não é suportado (totem e cálculos agrupam por data).
+        return "O horário de saída precisa ser depois da entrada (turno que passa da meia-noite não é suportado)."
+    if not dados["dias_semana"]:
+        return "Marque pelo menos um dia da semana."
     if bool(dados["horario_saida_almoco"]) != bool(dados["horario_retorno_almoco"]):
         return "Preencha os dois horários de almoço, ou deixe os dois em branco."
     if dados["horario_saida_almoco"] and dados["horario_retorno_almoco"]:
@@ -1838,7 +1940,9 @@ def configuracoes():
         if request.method == "POST":
             nome_instituicao = request.form.get("nome_instituicao", "").strip()
             rodape_cracha = request.form.get("rodape_cracha", "").strip()
-            cor_primaria = request.form.get("cor_primaria", "#1E40AF").strip() or "#1E40AF"
+            cor_primaria = request.form.get("cor_primaria", "#1E40AF").strip()
+            if not re.fullmatch(r"#[0-9a-fA-F]{6}", cor_primaria):
+                cor_primaria = "#1E40AF"
 
             try:
                 backup_frequencia_horas = int(request.form.get("backup_frequencia_horas", "24"))
@@ -2607,6 +2711,8 @@ def trocar_senha():
                 flash("Senha atual incorreta.", "erro")
             elif len(nova_senha) < 6:
                 flash("A nova senha precisa ter pelo menos 6 caracteres.", "erro")
+            elif nova_senha == db.ADMIN_PADRAO_SENHA:
+                flash("Escolha uma senha diferente da senha padrão.", "erro")
             elif nova_senha != confirmar_senha:
                 flash("A confirmação não corresponde à nova senha.", "erro")
             else:
@@ -2616,6 +2722,7 @@ def trocar_senha():
                 )
                 conn.commit()
                 registrar_auditoria(conn, "trocar_senha", "usuario", session["usuario_id"])
+                session.pop("senha_padrao", None)
                 flash("Senha alterada com sucesso.", "sucesso")
         finally:
             conn.close()

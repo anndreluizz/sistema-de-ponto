@@ -20,12 +20,12 @@
       <div class="cracha-instituicao">{{ config.nome_instituicao or "Ponto Eletrônico" }}</div>
     </div>
     <div class="cracha-corpo">
-      <img src="{{ url_for('static', filename=funcionario.foto) if funcionario.foto else foto_padrao }}"
+      <img src="{{ url_for('arquivo_privado', pasta='fotos', nome=funcionario.foto.split('/')[-1]) if funcionario.foto else foto_padrao }}"
            class="cracha-foto" alt="Foto de {{ funcionario.nome }}">
       <div class="cracha-nome">{{ funcionario.nome }}</div>
       <div class="cracha-cargo">{{ funcionario.cargo }}{% if funcionario.setor_nome %} · {{ funcionario.setor_nome }}{% endif %}</div>
       {% if funcionario.matricula %}<div class="cracha-matricula">Matrícula {{ funcionario.matricula }}</div>{% endif %}
-      <img class="cracha-qr" src="{{ url_for('static', filename='qrcodes/' ~ funcionario.id ~ '.png') }}" alt="QR Code">
+      <img class="cracha-qr" src="{{ url_for('arquivo_privado', pasta='qrcodes', nome=funcionario.id ~ '.png') }}" alt="QR Code">
     </div>
     {% if config.rodape_cracha %}
       <div class="cracha-rodape">{{ config.rodape_cracha }}</div>

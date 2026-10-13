@@ -15,6 +15,11 @@
       <img src="{{ url_for('static', filename=config.logo_path) }}" class="kiosk-logo" alt="Logo da instituição">
     {% endif %}
     <h1>{{ config.nome_instituicao if config and config.nome_instituicao else "Ponto Eletrônico" }}</h1>
+    {% if not totem_autorizado %}
+      <p class="kiosk-aviso"><strong>Este aparelho ainda não está autorizado como totem.</strong><br>
+        Um administrador precisa entrar pela engrenagem, ir em Configurações e clicar em
+        "Autorizar este aparelho como totem".</p>
+    {% endif %}
     <p>Toque no botão abaixo para ligar a câmera e bater o ponto.</p>
     <button id="botao-iniciar" class="botao-grande" type="button">
       <i class="bi bi-camera-fill me-2"></i>Iniciar

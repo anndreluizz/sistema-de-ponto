@@ -180,3 +180,90 @@ def test_folha_de_ponto_mensal_excel_responde_200_com_conteudo(cliente):
     assert resposta.status_code == 200
     assert resposta.mimetype == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     assert len(resposta.data) > 500
+
+
+# --- Segurança (auditoria 2026-10) -----------------------------------------
+
+
+def _criar_funcionario(codigo="QRTESTE123"):
+    conexao = db_module.get_db()
+    funcionario_id = conexao.execute(
+        "INSERT INTO funcionarios (nome, codigo, situacao) VALUES ('Zzz Totem', ?, 'ativo')", (codigo,)
+    ).lastrowid
+    conexao.commit()
+    conexao.close()
+    return funcionario_id
+
+
+def test_qrcode_nao_e_acessivel_sem_login(cliente):
+    assert cliente.get("/static/qrcodes/1.png").status_code == 404
+    resposta = cliente.get("/admin/arquivos/qrcodes/1.png")
+    assert resposta.status_code == 302
+    assert "/admin/login" in resposta.headers["Location"]
+
+
+def test_api_bater_ponto_recusa_aparelho_nao_autorizado(cliente):
+    _criar_funcionario()
+
+    resposta = cliente.post("/api/bater-ponto", json={"codigo": "QRTESTE123"})
+
+    assert resposta.status_code == 403
+    conexao = db_module.get_db()
+    assert conexao.execute("SELECT COUNT(*) c FROM registros").fetchone()["c"] == 0
+    conexao.close()
+
+
+def test_api_bater_ponto_aceita_aparelho_autorizado_por_admin(cliente):
+    _criar_funcionario()
+    _criar_usuario("admin_totem", "SenhaForte123!", "administrador")
+    _login(cliente, "admin_totem", "SenhaForte123!")
+    token = _csrf_token(cliente.get("/admin/configuracoes").get_data(as_text=True))
+    cliente.post("/admin/totem/autorizar", data={"csrf_token": token})
+    cliente.get("/admin/logout")  # o totem continua autorizado sem sessão de admin
+
+    resposta = cliente.post("/api/bater-ponto", json={"codigo": "QRTESTE123"})
+
+    assert resposta.status_code == 200
+    assert resposta.get_json()["tipo"] == "entrada"
+
+
+def test_login_ignora_redirecionamento_para_outro_site(cliente):
+    _criar_usuario("admin_redir", "SenhaForte123!", "administrador")
+    for destino in ("//site-falso.com/login", r"/\site-falso.com", "http://site-falso.com"):
+        cliente.get("/admin/logout")
+        token = _csrf_token(cliente.get("/admin/login").get_data(as_text=True))
+        resposta = cliente.post(
+            "/admin/login?proximo=" + destino,
+            data={"csrf_token": token, "usuario": "admin_redir", "senha": "SenhaForte123!"},
+        )
+        assert resposta.headers["Location"].endswith("/admin/dashboard"), destino
+
+
+def test_usuario_inativado_perde_acesso_na_hora(cliente):
+    _criar_usuario("rh_demitido", "SenhaForte123!", "rh")
+    _login(cliente, "rh_demitido", "SenhaForte123!")
+    assert cliente.get("/admin/dashboard").status_code == 200
+
+    conexao = db_module.get_db()
+    conexao.execute("UPDATE usuarios SET ativo = 0 WHERE usuario = 'rh_demitido'")
+    conexao.commit()
+    conexao.close()
+
+    resposta = cliente.get("/admin/dashboard")
+    assert resposta.status_code == 302
+    assert "/admin/login" in resposta.headers["Location"]
+
+
+def test_senha_padrao_obriga_troca_antes_de_usar_o_sistema(cliente):
+    _login(cliente, "admin", "admin123")  # criado pelo init_db
+
+    resposta = cliente.get("/admin/funcionarios")
+    assert resposta.status_code == 302
+    assert "/admin/senha" in resposta.headers["Location"]
+
+    token = _csrf_token(cliente.get("/admin/senha").get_data(as_text=True))
+    cliente.post(
+        "/admin/senha",
+        data={"csrf_token": token, "senha_atual": "admin123", "nova_senha": "NovaSenha!9", "confirmar_senha": "NovaSenha!9"},
+    )
+    assert cliente.get("/admin/funcionarios").status_code == 200

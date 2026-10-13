@@ -11,7 +11,7 @@
 
       <div class="d-flex align-items-center gap-3 mb-4">
         <img id="preview-foto" class="preview-foto"
-             src="{{ url_for('static', filename=funcionario.foto) if funcionario and funcionario.foto else foto_padrao }}"
+             src="{{ url_for('arquivo_privado', pasta='fotos', nome=funcionario.foto.split('/')[-1]) if funcionario and funcionario.foto else foto_padrao }}"
              alt="Foto do funcionário">
         <div>
           <label class="form-label mb-1 d-block">Foto do funcionário</label>

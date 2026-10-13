@@ -388,3 +388,68 @@ def test_montar_folha_ponto_mensal_ausencia_prevalece_sobre_feriado(conn, cenari
 
     # ausencia (ferias) continua prevalecendo sobre o feriado
     assert por_nome["Beto Testado"][7] == "FE"
+
+
+# ---------- Correções da auditoria (2026-10) ----------
+
+from relatorios_service import calcular_saldo_banco_horas_ate, montar_extrato_banco_horas  # noqa: E402
+
+
+def test_banco_de_horas_nao_debita_feriado(conn, cenario_semana):
+    ana_id = cenario_semana["ana_id"]
+    conn.execute("UPDATE funcionarios SET banco_horas_inicio = '2026-01-05' WHERE id = ?", (ana_id,))
+    conn.execute("DELETE FROM registros WHERE funcionario_id = ? AND timestamp LIKE '2026-01-06%'", (ana_id,))
+    conn.execute("INSERT INTO feriados (data, nome, criado_em) VALUES ('2026-01-06', 'Feriado teste', datetime('now'))")
+    conn.commit()
+    f = conn.execute(
+        "SELECT funcionarios.*, turnos.horario_entrada, turnos.horario_saida, turnos.horario_saida_almoco, "
+        "turnos.horario_retorno_almoco, turnos.dias_semana AS turno_dias_semana, "
+        "NULL AS escala_ciclo_dias_trabalho, NULL AS escala_ciclo_dias_descanso "
+        "FROM funcionarios JOIN turnos ON turnos.id = funcionarios.turno_id WHERE funcionarios.id = ?",
+        (ana_id,),
+    ).fetchone()
+
+    assert calcular_saldo_banco_horas_ate(conn, f, date(2026, 1, 9)) == 0
+    _, _, _, saldo_final = montar_extrato_banco_horas(conn, ana_id, "2026-01-05", "2026-01-09")
+    assert saldo_final == 0
+
+
+def test_horas_esperadas_contam_os_dias_de_falta(conn, cenario_semana):
+    beto = calcular_stats_funcionarios_periodo(conn, "2026-01-05", "2026-01-09")[cenario_semana["beto_id"]]
+    # 5 dias úteis menos 1 de férias justificadas = 4 x 8h (a falta de quarta também é esperada)
+    assert beto["horas_esperadas_seg"] == 4 * 8 * 3600
+
+
+def test_funcionario_que_saiu_continua_nos_relatorios_do_periodo_trabalhado(conn, cenario_semana):
+    beto_id = cenario_semana["beto_id"]
+    conn.execute("UPDATE funcionarios SET situacao = 'inativo' WHERE id = ?", (beto_id,))
+    conn.commit()
+
+    stats = calcular_stats_funcionarios_periodo(conn, "2026-01-05", "2026-01-31")
+    assert beto_id in stats
+    assert stats[beto_id]["faltas"] == 1  # só a quarta; depois do dia 9 (última atividade) não conta
+
+    folha = montar_folha_ponto_mensal(conn, 2026, 1)
+    linha_beto = next(l for l in folha["linhas"] if l["funcionario"]["id"] == beto_id)
+    assert linha_beto["codigos"][8] == "P"  # dia 9
+    assert linha_beto["codigos"][11] == ""  # dia 12, depois de sair: em branco, não "F"
+
+    # período sem nenhuma atividade dele: não aparece
+    assert beto_id not in calcular_stats_funcionarios_periodo(conn, "2026-02-01", "2026-02-28")
+
+
+def test_hoje_ainda_nao_conta_como_falta(conn):
+    turno_id = conn.execute(
+        "INSERT INTO turnos (nome, horario_entrada, horario_saida, tolerancia_minutos, dias_semana) "
+        "VALUES ('todo dia', '08:00', '17:00', 10, '0,1,2,3,4,5,6')"
+    ).lastrowid
+    func_id = conn.execute(
+        "INSERT INTO funcionarios (nome, codigo, situacao, turno_id) VALUES ('Eva Hoje', 'EEE555', 'ativo', ?)",
+        (turno_id,),
+    ).lastrowid
+    conn.commit()
+    hoje = date.today().isoformat()
+
+    stats = calcular_stats_funcionarios_periodo(conn, hoje, hoje)[func_id]
+    assert stats["faltas"] == 0
+    assert stats["horas_esperadas_seg"] == 0

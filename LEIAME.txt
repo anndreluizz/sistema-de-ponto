@@ -27,8 +27,17 @@ COMO USAR PELA PRIMEIRA VEZ
        usuario: admin
        senha:   admin123
 
-   IMPORTANTE: troque essa senha assim que possivel, no menu "Trocar senha"
-   (dropdown com seu nome, no canto superior direito).
+   No primeiro acesso com essa senha o sistema OBRIGA a troca dela antes de
+   liberar qualquer outra tela.
+
+2b. AUTORIZAR O TOTEM (obrigatorio, uma vez por aparelho): so aparelhos
+   autorizados conseguem bater ponto — isso impede alguem de bater ponto
+   pelo celular usando a foto de um cracha. No PROPRIO aparelho do totem
+   (o computador ou o tablet que fica na entrada), entre na area
+   administrativa, va em "Configuracoes" e clique em "Autorizar este
+   aparelho como totem". Enquanto nao fizer isso, a tela do totem mostra
+   um aviso amarelo e recusa os crachas. Se limpar os dados do navegador
+   do totem, e so repetir este passo.
 
 3. Cadastre os funcionarios em "Funcionarios" (nome, cargo, setor, turno, foto
    etc). Depois de cadastrar, clique em "Ver cracha" para gerar o cracha com
@@ -76,6 +85,8 @@ pra administrar:
    c) Toque em "Relaunch" pra reiniciar o Chrome.
    d) Acesse o endereço de novo, toque em "Iniciar" e permita o uso da
       câmera quando o Chrome perguntar.
+   e) Ainda no tablet, autorize-o como totem (passo 2b do inicio deste
+      arquivo).
 4. Pronto — deixe o tablet nessa tela (modo tela cheia) só pro totem, e
    acesse a "Area administrativa" normalmente em qualquer outro
    computador da escola, digitando o mesmo endereço (sem precisar do

@@ -4,7 +4,7 @@
 
 {% macro avatar(f, tamanho=48) %}
   {% if f.foto %}
-    <img src="{{ url_for('static', filename=f.foto) }}" class="avatar-img rounded-circle"
+    <img src="{{ url_for('arquivo_privado', pasta='fotos', nome=f.foto.split('/')[-1]) }}" class="avatar-img rounded-circle"
          style="width:{{ tamanho }}px;height:{{ tamanho }}px;" alt="Foto de {{ f.nome }}">
   {% else %}
     <div class="avatar-iniciais rounded-circle"
