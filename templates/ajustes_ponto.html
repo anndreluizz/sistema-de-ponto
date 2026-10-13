@@ -53,6 +53,10 @@
                 <td>
                   {% if par.entrada %}
                     {{ par.entrada.timestamp[11:16] }}
+                    {% if tem_foto_batida(par.entrada) %}
+                      <a href="{{ url_for('foto_batida', registro_id=par.entrada.id) }}" target="_blank" class="ms-1 sem-impressao"
+                         title="Ver foto tirada pelo totem nesta batida" aria-label="Ver foto da batida"><i class="bi bi-camera"></i></a>
+                    {% endif %}
                     {% if par.entrada.manual %}
                       <span class="badge text-bg-secondary ms-1" data-bs-toggle="tooltip" title="{{ par.entrada.motivo or 'Sem motivo registrado' }}">manual</span>
                     {% endif %}
@@ -61,6 +65,10 @@
                 <td>
                   {% if par.saida %}
                     {{ par.saida.timestamp[11:16] }}
+                    {% if tem_foto_batida(par.saida) %}
+                      <a href="{{ url_for('foto_batida', registro_id=par.saida.id) }}" target="_blank" class="ms-1 sem-impressao"
+                         title="Ver foto tirada pelo totem nesta batida" aria-label="Ver foto da batida"><i class="bi bi-camera"></i></a>
+                    {% endif %}
                     {% if par.saida.manual %}
                       <span class="badge text-bg-secondary ms-1" data-bs-toggle="tooltip" title="{{ par.saida.motivo or 'Sem motivo registrado' }}">manual</span>
                     {% endif %}

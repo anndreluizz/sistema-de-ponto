@@ -399,6 +399,14 @@ def init_db():
 
             CREATE INDEX IF NOT EXISTS idx_compensacoes_funcionario ON compensacoes_banco_horas(funcionario_id, data);
 
+            -- Meses fechados (folha entregue): os triggers de _criar_travas_mes_fechado
+            -- recusam qualquer alteração de ponto/justificativa/compensação/feriado neles.
+            CREATE TABLE IF NOT EXISTS meses_fechados (
+                mes TEXT PRIMARY KEY,
+                fechado_por TEXT,
+                fechado_em TEXT NOT NULL
+            );
+
             -- "Foto" da jornada (turno/escala efetivos) que valia até `vigente_ate`, gravada
             -- quando ela muda — assim trocar o turno não recalcula meses passados.
             -- `dados` é JSON com as colunas de relatorios_service.COLUNAS_JORNADA.
@@ -463,8 +471,37 @@ def init_db():
 
         _migrar_usuarios(conn)
         _migrar_usuarios_seguranca(conn)
+        _criar_travas_mes_fechado(conn)  # por último: _migrar_ausencias_tipos recria a tabela
     finally:
         conn.close()
+
+
+TABELAS_TRAVADAS_POR_MES = {
+    "registros": "timestamp",
+    "ausencias": "data",
+    "compensacoes_banco_horas": "data",
+    "feriados": "data",
+}
+
+
+def _criar_travas_mes_fechado(conn):
+    """Triggers que recusam INSERT/UPDATE/DELETE em mês fechado — vale para qualquer tela,
+    inclusive as que ainda não existem. O erro chega no Python como sqlite3.IntegrityError
+    com a mensagem 'mes_fechado'."""
+    for tabela, coluna in TABELAS_TRAVADAS_POR_MES.items():
+        fechado = "EXISTS (SELECT 1 FROM meses_fechados WHERE mes = substr({}.%s, 1, 7))" % coluna
+        condicoes = {
+            "insert": fechado.format("NEW"),
+            "update": f"{fechado.format('OLD')} OR {fechado.format('NEW')}",
+            "delete": fechado.format("OLD"),
+        }
+        for operacao, condicao in condicoes.items():
+            conn.execute(
+                f"""CREATE TRIGGER IF NOT EXISTS trava_mes_{tabela}_{operacao}
+                    BEFORE {operacao.upper()} ON {tabela} WHEN {condicao}
+                    BEGIN SELECT RAISE(ABORT, 'mes_fechado'); END"""
+            )
+    conn.commit()
 
 
 def gerar_codigo():

@@ -344,3 +344,98 @@ def test_editar_turno_pela_tela_guarda_jornada_antiga(cliente):
     linha = conexao.execute("SELECT dados FROM jornada_historico").fetchone()
     conexao.close()
     assert linha is not None and '"horario_entrada": "08:00"' in linha["dados"]
+
+
+# --- Fechamento do mês ------------------------------------------------------
+
+
+def _contar(sql):
+    conexao = db_module.get_db()
+    n = conexao.execute(sql).fetchone()[0]
+    conexao.close()
+    return n
+
+
+def test_mes_fechado_bloqueia_lancamento_manual_e_so_admin_reabre(cliente):
+    funcionario_id = _criar_funcionario("FECHA1")
+    _criar_usuario("rh_fecha", "SenhaForte123!", "rh")
+    _login(cliente, "rh_fecha", "SenhaForte123!")
+    token = _csrf_token(cliente.get("/admin/relatorios").get_data(as_text=True))
+
+    cliente.post("/admin/meses/fechar", data={"csrf_token": token, "mes": "2026-01"})
+    resposta = cliente.post("/admin/registros/novo", data={
+        "csrf_token": token, "funcionario_id": funcionario_id, "tipo": "entrada",
+        "timestamp": "2026-01-10T08:00", "motivo": "teste",
+    }, follow_redirects=True)
+    assert "já foi fechado" in resposta.get_data(as_text=True)
+    assert _contar("SELECT COUNT(*) FROM registros") == 0
+
+    # RH não reabre
+    cliente.post("/admin/meses/2026-01/reabrir", data={"csrf_token": token})
+    assert _contar("SELECT COUNT(*) FROM meses_fechados") == 1
+
+    cliente.get("/admin/logout")
+    _criar_usuario("admin_fecha", "SenhaForte123!", "administrador")
+    _login(cliente, "admin_fecha", "SenhaForte123!")
+    token = _csrf_token(cliente.get("/admin/relatorios").get_data(as_text=True))
+    cliente.post("/admin/meses/2026-01/reabrir", data={"csrf_token": token})
+    assert _contar("SELECT COUNT(*) FROM meses_fechados") == 0
+
+
+def test_nao_fecha_mes_corrente(cliente):
+    from datetime import date
+
+    _criar_usuario("admin_corrente", "SenhaForte123!", "administrador")
+    _login(cliente, "admin_corrente", "SenhaForte123!")
+    token = _csrf_token(cliente.get("/admin/relatorios").get_data(as_text=True))
+
+    cliente.post("/admin/meses/fechar", data={"csrf_token": token, "mes": date.today().strftime("%Y-%m")})
+
+    assert _contar("SELECT COUNT(*) FROM meses_fechados") == 0
+
+
+# --- Foto na batida ---------------------------------------------------------
+
+
+def _autorizar_totem(cliente, usuario):
+    _criar_usuario(usuario, "SenhaForte123!", "administrador")
+    _login(cliente, usuario, "SenhaForte123!")
+    token = _csrf_token(cliente.get("/admin/configuracoes").get_data(as_text=True))
+    cliente.post("/admin/totem/autorizar", data={"csrf_token": token})
+
+
+def test_batida_guarda_foto_e_so_gestao_ve(cliente):
+    import base64
+    import io
+
+    from PIL import Image
+
+    buffer = io.BytesIO()
+    Image.new("RGB", (32, 24), "red").save(buffer, "JPEG")
+    foto = "data:image/jpeg;base64," + base64.b64encode(buffer.getvalue()).decode()
+    _criar_funcionario("FOTO1")
+    _autorizar_totem(cliente, "admin_foto")
+
+    assert cliente.post("/api/bater-ponto", json={"codigo": "FOTO1", "foto": foto}).status_code == 200
+
+    conexao = db_module.get_db()
+    registro_id = conexao.execute("SELECT id FROM registros").fetchone()["id"]
+    conexao.close()
+    resposta = cliente.get(f"/admin/registros/{registro_id}/foto")
+    assert resposta.status_code == 200 and resposta.data[:2] == b"\xff\xd8"
+
+    cliente.get("/admin/logout")
+    assert cliente.get(f"/admin/registros/{registro_id}/foto").status_code == 302  # sem login
+
+
+def test_batida_sem_foto_ou_foto_invalida_registra_igual(cliente):
+    _criar_funcionario("FOTO2")
+    _autorizar_totem(cliente, "admin_foto2")
+
+    resposta = cliente.post("/api/bater-ponto", json={"codigo": "FOTO2", "foto": "data:image/jpeg;base64,!!!lixo"})
+
+    assert resposta.status_code == 200
+    conexao = db_module.get_db()
+    registro_id = conexao.execute("SELECT id FROM registros").fetchone()["id"]
+    conexao.close()
+    assert cliente.get(f"/admin/registros/{registro_id}/foto").status_code == 404

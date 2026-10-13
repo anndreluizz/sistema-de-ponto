@@ -80,8 +80,24 @@
     }, DURACAO_FEEDBACK_MS);
   }
 
+  var canvasFoto = document.createElement("canvas");
+  var LARGURA_FOTO_BATIDA = 320;
+
+  // Foto do instante da batida (o RH confere em Ajustes de Ponto se suspeitar de crachá emprestado).
+  function capturarFoto() {
+    try {
+      canvasFoto.width = LARGURA_FOTO_BATIDA;
+      canvasFoto.height = Math.round(video.videoHeight * LARGURA_FOTO_BATIDA / video.videoWidth);
+      canvasFoto.getContext("2d").drawImage(video, 0, 0, canvasFoto.width, canvasFoto.height);
+      return canvasFoto.toDataURL("image/jpeg", 0.6);
+    } catch (erro) {
+      return null; // sem foto, a batida vale do mesmo jeito
+    }
+  }
+
   function processarCodigo(codigo) {
     ocupado = true;
+    var foto = capturarFoto();
     // Sem tempo limite, um Wi-Fi que cai no meio da requisição deixava o totem travado
     // (ocupado = true) sem ler mais nenhum crachá e sem avisar ninguém.
     var controle = new AbortController();
@@ -89,7 +105,7 @@
     fetch("/api/bater-ponto", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ codigo: codigo }),
+      body: JSON.stringify({ codigo: codigo, foto: foto }),
       signal: controle.signal,
     })
       .then(function (resposta) {

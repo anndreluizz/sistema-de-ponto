@@ -210,6 +210,26 @@ TURNOS, ESCALAS E BANCO DE HORAS
   desativado pra essa pessoa e nao aparece nada nessa tela.
 
 
+FOTO NA BATIDA E FECHAMENTO DO MES
+-------------------------------------
+- Foto na batida: a cada ponto batido, o totem tira uma foto pequena de
+  quem esta na frente da camera. Em "Ajustes de Ponto", aparece um icone
+  de camera ao lado do horario — clique para ver a foto. Serve para
+  conferir se alguem bateu ponto com o cracha de outra pessoa.
+  As fotos ficam guardadas por 90 dias e depois sao apagadas sozinhas.
+  Elas NAO entram no backup (para o backup nao ficar enorme).
+  IMPORTANTE (LGPD): avise os funcionarios que o totem tira foto no
+  momento do ponto e para que ela serve (por exemplo, num aviso fixado
+  ao lado do totem).
+- Fechamento do mes: depois de entregar a folha de frequencia, va em
+  "Central de Relatorios" > "Fechamento do mes", escolha o mes e clique
+  em "Fechar mes". A partir dai ninguem consegue alterar registros,
+  justificativas, compensacoes de banco de horas ou feriados daquele mes.
+  RH e Administrador podem fechar; so o Administrador pode reabrir
+  (clicando em "reabrir" ao lado do mes). O mes atual nao pode ser
+  fechado — so meses que ja terminaram.
+
+
 BACKUP (IMPORTANTE)
 ---------------------
 Menu "Backup" (so Administrador):

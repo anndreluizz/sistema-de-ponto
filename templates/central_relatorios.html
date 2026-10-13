@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import cabecalho_relatorio %}
+{% from "_macros.html" import cabecalho_relatorio, csrf_input %}
 {% block titulo %}Central de Relatórios{% endblock %}
 {% block conteudo %}
   {{ cabecalho_relatorio(config, "Central de Relatórios", nomes_visao[visao] ~ " — " ~ data_inicio ~ " a " ~ data_fim) }}
@@ -77,6 +77,45 @@
       </div>
     </div>
   </form>
+
+  {% if session.usuario_perfil in ('administrador', 'rh') %}
+  <div class="card mb-4">
+    <div class="card-body">
+      <h2 class="h6 fw-bold mb-1"><i class="bi bi-lock me-1"></i>Fechamento do mês</h2>
+      <p class="text-secondary small mb-3">
+        Depois de entregar a folha de frequência, feche o mês: ninguém mais consegue alterar
+        registros, justificativas, compensações ou feriados dele. Só um Administrador reabre.
+      </p>
+      <form method="post" action="{{ url_for('fechar_mes') }}" class="d-flex flex-wrap align-items-end gap-2 form-confirmar"
+            data-confirmar="Fechar este mês? Os registros dele não poderão mais ser alterados.">
+        {{ csrf_input() }}
+        <div>
+          <label class="form-label small mb-1" for="mes-fechar">Mês</label>
+          <input type="month" name="mes" id="mes-fechar" class="form-control form-control-sm"
+                 value="{{ mes_anterior }}" max="{{ mes_anterior }}" style="width: 150px;" required>
+        </div>
+        <button type="submit" class="btn btn-outline-danger btn-sm"><i class="bi bi-lock-fill me-1"></i>Fechar mês</button>
+      </form>
+      {% if meses_fechados %}
+        <div class="mt-3 d-flex flex-wrap gap-2">
+          {% for m in meses_fechados %}
+            <span class="badge text-bg-light border d-inline-flex align-items-center gap-2 py-2"
+                  title="Fechado por {{ m.fechado_por or '?' }} em {{ m.fechado_em }}">
+              <i class="bi bi-lock-fill"></i>{{ m.mes[5:] }}/{{ m.mes[:4] }}
+              {% if session.usuario_perfil == 'administrador' %}
+                <form method="post" action="{{ url_for('reabrir_mes', mes=m.mes) }}" class="d-inline form-confirmar"
+                      data-confirmar="Reabrir {{ m.mes[5:] }}/{{ m.mes[:4] }}? A folha já entregue poderá ser alterada.">
+                  {{ csrf_input() }}
+                  <button type="submit" class="btn btn-link btn-sm p-0 text-danger" aria-label="Reabrir mês">reabrir</button>
+                </form>
+              {% endif %}
+            </span>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
 
   <div class="card">
     <div class="table-responsive">

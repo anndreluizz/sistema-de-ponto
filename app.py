@@ -953,6 +953,63 @@ def _foto_como_data_uri(foto):
     return "data:image/jpeg;base64," + base64.b64encode(caminho.read_bytes()).decode()
 
 
+FOTOS_BATIDA_DIR = BASE_DIR / "uploads_privados" / "batidas"
+DIAS_GUARDAR_FOTOS_BATIDA = 90
+TAMANHO_MAX_FOTO_BATIDA = 300_000  # bytes do JPEG; o totem manda ~15 KB
+
+
+def _caminho_foto_batida(registro_id, timestamp):
+    return FOTOS_BATIDA_DIR / timestamp[:7] / f"{registro_id}.jpg"
+
+
+def salvar_foto_batida(registro_id, timestamp, foto_data_uri):
+    """Foto tirada pelo totem no instante da batida — pra conferir crachá emprestado. Nunca
+    impede a batida: foto ausente, inválida ou erro de disco só fica sem foto."""
+    prefixo = "data:image/jpeg;base64,"
+    if not isinstance(foto_data_uri, str) or not foto_data_uri.startswith(prefixo):
+        return
+    try:
+        conteudo = base64.b64decode(foto_data_uri[len(prefixo):], validate=True)
+        if len(conteudo) > TAMANHO_MAX_FOTO_BATIDA or not conteudo.startswith(b"\xff\xd8"):
+            return
+        caminho = _caminho_foto_batida(registro_id, timestamp)
+        caminho.parent.mkdir(parents=True, exist_ok=True)
+        caminho.write_bytes(conteudo)
+    except Exception:
+        app.logger.exception("Falha ao salvar foto da batida %s", registro_id)
+
+
+def apagar_fotos_batida_antigas():
+    limite = time.time() - DIAS_GUARDAR_FOTOS_BATIDA * 86400
+    if not FOTOS_BATIDA_DIR.is_dir():
+        return
+    for pasta_mes in FOTOS_BATIDA_DIR.iterdir():
+        for foto in pasta_mes.glob("*.jpg"):
+            if foto.stat().st_mtime < limite:
+                foto.unlink(missing_ok=True)
+        if pasta_mes.is_dir() and not any(pasta_mes.iterdir()):
+            pasta_mes.rmdir()
+
+
+@app.template_global()
+def tem_foto_batida(registro):
+    return _caminho_foto_batida(registro["id"], registro["timestamp"]).is_file()
+
+
+@app.route("/admin/registros/<int:registro_id>/foto")
+@login_obrigatorio
+@perfil_obrigatorio(*PERFIS_GESTAO)
+def foto_batida(registro_id):
+    conn = db.get_db()
+    try:
+        registro = conn.execute("SELECT id, timestamp FROM registros WHERE id = ?", (registro_id,)).fetchone()
+    finally:
+        conn.close()
+    if not registro or not tem_foto_batida(registro):
+        abort(404)
+    return send_file(_caminho_foto_batida(registro["id"], registro["timestamp"]), mimetype="image/jpeg")
+
+
 @app.route("/api/bater-ponto", methods=["POST"])
 @csrf.exempt
 def api_bater_ponto():
@@ -1006,11 +1063,12 @@ def api_bater_ponto():
         tipo = "entrada" if (ultimo is None or ultimo["tipo"] == "saida") else "saida"
         timestamp_str = agora.strftime("%Y-%m-%d %H:%M:%S")
 
-        conn.execute(
+        cursor = conn.execute(
             "INSERT INTO registros (funcionario_id, tipo, timestamp, manual) VALUES (?, ?, ?, 0)",
             (funcionario["id"], tipo, timestamp_str),
         )
         conn.commit()
+        salvar_foto_batida(cursor.lastrowid, timestamp_str, dados.get("foto"))
 
         return jsonify(
             {
@@ -1676,7 +1734,9 @@ def feriados():
                         conn, "criar", "feriado", cursor.lastrowid, f"data={dados['data']}; nome={dados['nome']}"
                     )
                     flash("Feriado adicionado.", "sucesso")
-                except sqlite3.IntegrityError:
+                except sqlite3.IntegrityError as erro_integridade:
+                    if eh_erro_mes_fechado(erro_integridade):
+                        raise
                     flash("Já existe um feriado cadastrado nessa data.", "erro")
             return redirect(url_for("feriados"))
 
@@ -1707,7 +1767,9 @@ def editar_feriado(feriado_id):
                     conn, "editar", "feriado", feriado_id, f"data={dados['data']}; nome={dados['nome']}"
                 )
                 flash("Feriado atualizado.", "sucesso")
-            except sqlite3.IntegrityError:
+            except sqlite3.IntegrityError as erro_integridade:
+                if eh_erro_mes_fechado(erro_integridade):
+                    raise
                 flash("Já existe um feriado cadastrado nessa data.", "erro")
     finally:
         conn.close()
@@ -2075,6 +2137,10 @@ def relatorios():
             nomes_visao=NOMES_VISAO,
             config=config,
             mes_folha_ponto_atual=date.today().strftime("%Y-%m"),
+            meses_fechados=conn.execute(
+                "SELECT * FROM meses_fechados ORDER BY mes DESC LIMIT 12"
+            ).fetchall(),
+            mes_anterior=(date.today().replace(day=1) - timedelta(days=1)).strftime("%Y-%m"),
         )
     finally:
         conn.close()
@@ -2521,7 +2587,9 @@ def nova_ausencia():
             conn, "criar", "ausencia", cursor.lastrowid, f"funcionario_id={funcionario_id}; data={data_ausencia}; tipo={tipo}"
         )
         flash("Justificativa registrada.", "sucesso")
-    except sqlite3.IntegrityError:
+    except sqlite3.IntegrityError as erro_integridade:
+        if eh_erro_mes_fechado(erro_integridade):
+            raise
         flash("Já existe uma justificativa para esse funcionário nessa data. Edite a existente.", "erro")
     finally:
         conn.close()
@@ -2560,6 +2628,12 @@ def excluir_ausencia(ausencia_id):
                WHERE ausencias.id = ?""",
             (ausencia_id,),
         ).fetchone()
+
+        # Checa o mês fechado ANTES de apagar arquivos do disco (o trigger só barraria depois).
+        if ausencia and conn.execute(
+            "SELECT 1 FROM meses_fechados WHERE mes = ?", (ausencia["data"][:7],)
+        ).fetchone():
+            raise sqlite3.IntegrityError("mes_fechado")
 
         # Apaga os documentos anexados antes (FK bloquearia o DELETE de ausencias senão).
         documentos_anexados = conn.execute(
@@ -3095,6 +3169,61 @@ def backup_restaurar():
     return redirect(url_for("login"))
 
 
+def eh_erro_mes_fechado(erro):
+    return isinstance(erro, sqlite3.IntegrityError) and "mes_fechado" in str(erro)
+
+
+@app.errorhandler(sqlite3.IntegrityError)
+def erro_integridade(erro):
+    """Os triggers de mês fechado (db._criar_travas_mes_fechado) chegam aqui de qualquer tela."""
+    if not eh_erro_mes_fechado(erro):
+        raise erro
+    flash(
+        "Esse mês já foi fechado (folha entregue) e não pode mais ser alterado. "
+        "Um Administrador pode reabrir o mês na Central de Relatórios.",
+        "erro",
+    )
+    return redirect(request.referrer or url_for("dashboard"))
+
+
+@app.route("/admin/meses/fechar", methods=["POST"])
+@login_obrigatorio
+@perfil_obrigatorio(*PERFIS_GESTAO)
+def fechar_mes():
+    mes = request.form.get("mes", "").strip()
+    if not re.fullmatch(r"\d{4}-\d{2}", mes) or mes >= date.today().strftime("%Y-%m"):
+        # Mês corrente não fecha: o totem continua gravando nele.
+        flash("Só dá para fechar meses que já terminaram.", "erro")
+        return redirect(url_for("relatorios"))
+    conn = db.get_db()
+    try:
+        conn.execute(
+            "INSERT OR IGNORE INTO meses_fechados (mes, fechado_por, fechado_em) VALUES (?, ?, ?)",
+            (mes, session.get("usuario_login"), datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
+        )
+        conn.commit()
+        registrar_auditoria(conn, "fechar_mes", "mes", detalhes=f"mes={mes}")
+    finally:
+        conn.close()
+    flash(f"Mês {mes[5:]}/{mes[:4]} fechado. Os registros dele não podem mais ser alterados.", "sucesso")
+    return redirect(url_for("relatorios"))
+
+
+@app.route("/admin/meses/<mes>/reabrir", methods=["POST"])
+@login_obrigatorio
+@perfil_obrigatorio(*PERFIS_SOMENTE_ADMIN)
+def reabrir_mes(mes):
+    conn = db.get_db()
+    try:
+        conn.execute("DELETE FROM meses_fechados WHERE mes = ?", (mes,))
+        conn.commit()
+        registrar_auditoria(conn, "reabrir_mes", "mes", detalhes=f"mes={mes}")
+    finally:
+        conn.close()
+    flash(f"Mês {mes[5:]}/{mes[:4]} reaberto para alterações.", "sucesso")
+    return redirect(url_for("relatorios"))
+
+
 @app.errorhandler(500)
 def erro_interno(erro):
     return (
@@ -3113,6 +3242,10 @@ def _agendador_backup():
             verificar_backup_automatico()
         except Exception:
             app.logger.exception("Falha no agendador de backup automático")
+        try:
+            apagar_fotos_batida_antigas()
+        except Exception:
+            app.logger.exception("Falha ao apagar fotos de batida antigas")
         time.sleep(3600)
 
 
