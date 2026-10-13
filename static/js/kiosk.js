@@ -5,6 +5,8 @@
   var telaCamera = document.getElementById("tela-camera");
   var telaFeedback = document.getElementById("tela-feedback");
   var botaoIniciar = document.getElementById("botao-iniciar");
+  var erroCamera = document.getElementById("erro-camera");
+  var linkAdmin = document.getElementById("link-admin");
   var video = document.getElementById("video");
   var canvas = document.getElementById("canvas");
   var contexto = canvas.getContext("2d", { willReadFrequently: true });
@@ -16,12 +18,16 @@
 
   var LARGURA_PROCESSAMENTO = 480;
   var DURACAO_FEEDBACK_MS = 3000;
-  var RESFRIAMENTO_MESMO_CODIGO_MS = 5000;
+  // Precisa ser maior que COOLDOWN_SEGUNDOS do servidor (8s), senão quem segura o crachá
+  // na frente da câmera depois de bater o ponto recebe uma tela vermelha de "erro".
+  var RESFRIAMENTO_MESMO_CODIGO_MS = 10000;
+  var TEMPO_LIMITE_REQUISICAO_MS = 8000;
 
   var ocupado = false;
   var audioContexto = null;
   var ultimoCodigoLido = null;
   var ultimoCodigoLidoEm = 0;
+  var loopRodando = false;
 
   function atualizarRelogio() {
     var agora = new Date();
@@ -76,13 +82,21 @@
 
   function processarCodigo(codigo) {
     ocupado = true;
+    // Sem tempo limite, um Wi-Fi que cai no meio da requisição deixava o totem travado
+    // (ocupado = true) sem ler mais nenhum crachá e sem avisar ninguém.
+    var controle = new AbortController();
+    var temporizador = setTimeout(function () { controle.abort(); }, TEMPO_LIMITE_REQUISICAO_MS);
     fetch("/api/bater-ponto", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ codigo: codigo }),
+      signal: controle.signal,
     })
       .then(function (resposta) {
-        return resposta.json();
+        // Um erro 500 vem como página HTML, não JSON: antes isso aparecia como "Sem conexão".
+        return resposta.json().catch(function () {
+          return { ok: false, erro: "Erro no servidor (" + resposta.status + "). Chame a coordenação." };
+        });
       })
       .then(function (dados) {
         if (dados.ok) {
@@ -98,6 +112,9 @@
       })
       .catch(function () {
         mostrarFeedback(false, "Sem conexão com o servidor", "Chame a coordenação.");
+      })
+      .then(function () {
+        clearTimeout(temporizador);
       });
   }
 
@@ -128,25 +145,88 @@
     }
   }
 
-  function iniciar() {
+  function mostrarErroCamera(mensagem) {
+    erroCamera.textContent = mensagem;
+    erroCamera.classList.remove("oculto");
+    telaCamera.classList.add("oculto");
+    telaInicial.classList.remove("oculto");
+  }
+
+  var MENSAGENS_ERRO_CAMERA = {
+    NotAllowedError: "O navegador bloqueou a câmera. Toque no cadeado da barra de endereço, permita a câmera e toque em Iniciar de novo.",
+    NotFoundError: "Nenhuma câmera foi encontrada neste aparelho.",
+    NotReadableError: "A câmera está sendo usada por outro programa. Feche-o e toque em Iniciar de novo.",
+  };
+
+  function manterTelaLigada() {
+    // Sem isso a tela do tablet apaga, a câmera para e o totem fica em "Aproxime seu crachá" sem ler nada.
+    if (!("wakeLock" in navigator)) return;
+    navigator.wakeLock.request("screen").catch(function () {});
+  }
+
+  function abrirCamera() {
+    // A câmera só funciona em "contexto seguro" (localhost ou HTTPS). Pelo IP da rede, sem o
+    // ajuste do Chrome descrito no LEIAME, navigator.mediaDevices nem existe.
+    if (!window.isSecureContext || !navigator.mediaDevices) {
+      mostrarErroCamera(
+        "O navegador não libera a câmera neste endereço (" + location.host + "). " +
+        "Veja a seção USAR UM TABLET NO TOTEM do LEIAME: o ajuste do Chrome precisa ter exatamente este endereço."
+      );
+      return;
+    }
     navigator.mediaDevices
-      .getUserMedia({ video: { facingMode: "environment" }, audio: false })
+      .getUserMedia({ video: { facingMode: "user" }, audio: false })
       .then(function (stream) {
+        stream.getVideoTracks().forEach(function (trilha) {
+          trilha.addEventListener("ended", function () {
+            if (!document.hidden) abrirCamera();
+          });
+        });
         video.srcObject = stream;
         return video.play();
       })
       .then(function () {
-        if (document.documentElement.requestFullscreen) {
+        if (document.documentElement.requestFullscreen && !document.fullscreenElement) {
           document.documentElement.requestFullscreen().catch(function () {});
         }
+        erroCamera.classList.add("oculto");
         telaInicial.classList.add("oculto");
         telaCamera.classList.remove("oculto");
-        requestAnimationFrame(loop);
+        manterTelaLigada();
+        if (!loopRodando) {
+          loopRodando = true;
+          requestAnimationFrame(loop);
+        }
       })
-      .catch(function () {
-        alert("Não foi possível acessar a câmera. Verifique as permissões do navegador e tente novamente.");
+      .catch(function (erro) {
+        mostrarErroCamera(
+          MENSAGENS_ERRO_CAMERA[erro && erro.name] ||
+          "Não foi possível acessar a câmera. Toque em Iniciar para tentar de novo."
+        );
       });
   }
 
-  botaoIniciar.addEventListener("click", iniciar);
+  document.addEventListener("visibilitychange", function () {
+    if (document.hidden || telaCamera.classList.contains("oculto")) return;
+    // Voltando de tela apagada/aba suspensa: o bloqueio de tela cai sozinho e a câmera
+    // pode ter morrido — renova os dois.
+    manterTelaLigada();
+    var stream = video.srcObject;
+    var viva = stream && stream.getVideoTracks().some(function (t) { return t.readyState === "live"; });
+    if (!viva) abrirCamera();
+  });
+
+  // Engrenagem: um toque por engano tirava o totem do ar. Exige dois toques em até 3s.
+  var primeiroToqueAdmin = 0;
+  linkAdmin.addEventListener("click", function (evento) {
+    var agora = Date.now();
+    if (agora - primeiroToqueAdmin > 3000) {
+      evento.preventDefault();
+      primeiroToqueAdmin = agora;
+      linkAdmin.classList.add("kiosk-admin-link-armado");
+      setTimeout(function () { linkAdmin.classList.remove("kiosk-admin-link-armado"); }, 3000);
+    }
+  });
+
+  botaoIniciar.addEventListener("click", abrirCamera);
 })();

@@ -154,3 +154,12 @@ body {
   text-decoration: none;
 }
 .kiosk-admin-link:hover { color: rgba(255, 255, 255, 0.8); }
+.kiosk-admin-link-armado { color: #fff; }
+.kiosk-admin-link-armado::before {
+  content: "Toque de novo para sair do totem";
+  font-size: 0.9rem;
+  margin-right: 0.5rem;
+  vertical-align: middle;
+}
+/* kiosk.html não carrega o Bootstrap: só o utilitário que ele usa */
+.me-2 { margin-right: 0.5rem; }

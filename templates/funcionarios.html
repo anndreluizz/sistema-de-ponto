@@ -117,7 +117,7 @@
                     {% endif %}
                     {% if f.situacao != 'inativo' %}
                     <li>
-                      <form method="post" action="{{ url_for('mudar_situacao_funcionario', funcionario_id=f.id) }}">
+                      <form method="post" action="{{ url_for('mudar_situacao_funcionario', funcionario_id=f.id) }}" class="form-confirmar" data-confirmar="Marcar {{ f.nome }} como inativo? O totem vai recusar o crachá dessa pessoa.">
                         {{ csrf_input() }}
                         <input type="hidden" name="situacao" value="inativo">
                         <button type="submit" class="dropdown-item"><i class="bi bi-slash-circle me-2"></i>Marcar como inativo</button>
@@ -126,7 +126,7 @@
                     {% endif %}
                     {% if f.situacao != 'ferias' %}
                     <li>
-                      <form method="post" action="{{ url_for('mudar_situacao_funcionario', funcionario_id=f.id) }}">
+                      <form method="post" action="{{ url_for('mudar_situacao_funcionario', funcionario_id=f.id) }}" class="form-confirmar" data-confirmar="Marcar {{ f.nome }} como de férias? O totem vai recusar o crachá dessa pessoa.">
                         {{ csrf_input() }}
                         <input type="hidden" name="situacao" value="ferias">
                         <button type="submit" class="dropdown-item text-info"><i class="bi bi-airplane me-2"></i>Marcar como férias</button>
@@ -135,7 +135,7 @@
                     {% endif %}
                     {% if f.situacao != 'afastado' %}
                     <li>
-                      <form method="post" action="{{ url_for('mudar_situacao_funcionario', funcionario_id=f.id) }}">
+                      <form method="post" action="{{ url_for('mudar_situacao_funcionario', funcionario_id=f.id) }}" class="form-confirmar" data-confirmar="Marcar {{ f.nome }} como afastado? O totem vai recusar o crachá dessa pessoa.">
                         {{ csrf_input() }}
                         <input type="hidden" name="situacao" value="afastado">
                         <button type="submit" class="dropdown-item text-warning"><i class="bi bi-bandaid me-2"></i>Marcar como afastado</button>

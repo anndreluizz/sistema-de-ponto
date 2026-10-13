@@ -50,8 +50,15 @@
 
     var botaoAbrirMobile = document.getElementById("botao-abrir-sidebar");
     if (botaoAbrirMobile) {
-      botaoAbrirMobile.addEventListener("click", function () {
+      botaoAbrirMobile.addEventListener("click", function (evento) {
+        evento.stopPropagation();
         document.body.classList.toggle("sidebar-mobile-aberta");
+      });
+      // No celular, tocar fora do menu fecha ele.
+      document.addEventListener("click", function (evento) {
+        if (document.body.classList.contains("sidebar-mobile-aberta") && !evento.target.closest(".sidebar")) {
+          document.body.classList.remove("sidebar-mobile-aberta");
+        }
       });
     }
 

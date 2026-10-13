@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
   <title>Ponto Eletrônico</title>
+  <link rel="icon" href="{{ url_for('static', filename='icone_app.ico') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap-icons/bootstrap-icons.min.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='vendor/inter/fonts.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
@@ -21,6 +22,7 @@
         "Autorizar este aparelho como totem".</p>
     {% endif %}
     <p>Toque no botão abaixo para ligar a câmera e bater o ponto.</p>
+    <p id="erro-camera" class="kiosk-aviso oculto" role="alert"></p>
     <button id="botao-iniciar" class="botao-grande" type="button">
       <i class="bi bi-camera-fill me-2"></i>Iniciar
     </button>
@@ -40,7 +42,7 @@
     <div id="feedback-subtexto" class="feedback-subtexto"></div>
   </div>
 
-  <a href="{{ url_for('login') }}" class="kiosk-admin-link" title="Área administrativa">
+  <a href="{{ url_for('login') }}" id="link-admin" class="kiosk-admin-link" title="Área administrativa" aria-label="Área administrativa">
     <i class="bi bi-gear-fill"></i>
   </a>
 

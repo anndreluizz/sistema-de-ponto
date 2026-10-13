@@ -27,7 +27,7 @@
               <td class="text-secondary small">{{ u.criado_em }}</td>
               <td class="text-end">
                 <div class="dropdown">
-                  <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="dropdown"><i class="bi bi-three-dots"></i></button>
+                  <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="dropdown" aria-label="Ações"><i class="bi bi-three-dots"></i></button>
                   <ul class="dropdown-menu dropdown-menu-end">
                     <li><a class="dropdown-item" href="{{ url_for('editar_usuario', usuario_id=u.id) }}"><i class="bi bi-pencil me-2"></i>Editar</a></li>
                     <li>
@@ -38,7 +38,7 @@
                     <li><hr class="dropdown-divider"></li>
                     {% if u.ativo %}
                       <li>
-                        <form method="post" action="{{ url_for('mudar_situacao_usuario', usuario_id=u.id) }}">
+                        <form method="post" action="{{ url_for('mudar_situacao_usuario', usuario_id=u.id) }}" class="form-confirmar" data-confirmar="Inativar o usuário {{ u.usuario }}? Ele perde o acesso ao sistema na hora.">
                           {{ csrf_input() }}
                           <input type="hidden" name="ativo" value="0">
                           <button type="submit" class="dropdown-item"><i class="bi bi-slash-circle me-2"></i>Inativar</button>
