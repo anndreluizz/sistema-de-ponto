@@ -195,6 +195,11 @@ TURNOS, ESCALAS E BANCO DE HORAS
   "data de referencia" — um dia em que ele trabalha, pra o sistema saber
   em qual fase do rodizio essa pessoa esta (duas pessoas na mesma escala
   costumam estar em fases opostas, cobrindo a folga uma da outra).
+- Trocar o turno/escala de alguem, ou editar o horario de um turno/escala,
+  vale A PARTIR DE HOJE: o sistema guarda a jornada antiga e continua
+  usando ela para calcular os dias anteriores (atrasos, faltas, horas
+  extras e banco de horas do passado nao mudam). Turno que passa da
+  meia-noite nao e suportado.
 - "Banco de horas": cada funcionario tem uma tela propria (menu de acoes
   em "Funcionarios" → "Banco de horas") com o extrato dia a dia (horas
   trabalhadas, esperadas, diferenca e saldo acumulado) e onde da pra

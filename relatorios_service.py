@@ -1,5 +1,6 @@
 """Lógica de cálculo de relatórios e histórico de ponto — sem rotas, sem I/O externo."""
 import calendar
+import json
 from datetime import date, datetime, timedelta
 
 DIAS_UTEIS = (0, 1, 2, 3, 4)  # datetime.weekday(): segunda=0 ... sexta=4
@@ -21,6 +22,86 @@ SQL_COLUNAS_TURNO_EFETIVO = """
     escalas.ciclo_dias_trabalho AS escala_ciclo_dias_trabalho,
     escalas.ciclo_dias_descanso AS escala_ciclo_dias_descanso
 """
+
+# --- Histórico de jornada -------------------------------------------------------------------
+# Tudo que decide "esse dia era de trabalho? quantas horas? atrasou?" para um funcionário.
+# (O nome do turno fica de fora: renomear não muda a jornada.)
+COLUNAS_JORNADA = (
+    "turno_id", "escala_id", "escala_data_referencia",
+    "horario_entrada", "horario_saida", "tolerancia_minutos", "tolerancia_saida_minutos",
+    "horario_saida_almoco", "horario_retorno_almoco", "turno_dias_semana",
+    "escala_ciclo_dias_trabalho", "escala_ciclo_dias_descanso",
+)
+
+
+class FuncionarioComHistorico(dict):
+    """Linha de funcionário (jornada atual) + `historico`: [(vigente_ate_iso, linha_naquela_época)],
+    em ordem crescente de vigente_ate."""
+    historico = ()
+
+
+def jornadas_atuais(conn):
+    """{funcionario_id: {coluna: valor}} com a jornada efetiva de hoje de todo mundo."""
+    linhas = conn.execute(
+        f"""SELECT funcionarios.id, funcionarios.turno_id, funcionarios.escala_id,
+                   funcionarios.escala_data_referencia, {SQL_COLUNAS_TURNO_EFETIVO}
+            FROM funcionarios {SQL_JOIN_TURNO_EFETIVO}"""
+    ).fetchall()
+    return {linha["id"]: {c: linha[c] for c in COLUNAS_JORNADA} for linha in linhas}
+
+
+def registrar_mudancas_de_jornada(conn, jornadas_antes, hoje=None):
+    """Chamar DEPOIS de alterar funcionário/turno/escala, passando jornadas_atuais() de ANTES.
+    Quem teve a jornada mudada ganha uma foto da antiga valendo até ontem — a nova vale de hoje
+    em diante. Várias mudanças no mesmo dia: fica a foto da primeira (a que valia até ontem).
+    Não faz commit (quem chama faz)."""
+    ontem = ((hoje or date.today()) - timedelta(days=1)).isoformat()
+    depois = jornadas_atuais(conn)
+    for funcionario_id, antes in jornadas_antes.items():
+        if depois.get(funcionario_id) != antes:
+            conn.execute(
+                """INSERT OR IGNORE INTO jornada_historico (funcionario_id, vigente_ate, dados, criado_em)
+                   VALUES (?, ?, ?, datetime('now', 'localtime'))""",
+                (funcionario_id, ontem, json.dumps(antes)),
+            )
+
+
+def anexar_historico_jornada(conn, funcionarios):
+    """Transforma linhas de funcionário em FuncionarioComHistorico (mesmas chaves + histórico)."""
+    funcionarios = list(funcionarios)
+    if not funcionarios:
+        return []
+    ids = [f["id"] for f in funcionarios]
+    placeholders = ",".join("?" * len(ids))
+    por_funcionario = {}
+    for linha in conn.execute(
+        f"""SELECT funcionario_id, vigente_ate, dados FROM jornada_historico
+            WHERE funcionario_id IN ({placeholders}) ORDER BY vigente_ate""",
+        ids,
+    ).fetchall():
+        por_funcionario.setdefault(linha["funcionario_id"], []).append((linha["vigente_ate"], linha["dados"]))
+
+    resultado = []
+    for f in funcionarios:
+        novo = FuncionarioComHistorico({chave: f[chave] for chave in f.keys()})
+        novo.historico = [
+            (vigente_ate, {**novo, **json.loads(dados)}) for vigente_ate, dados in por_funcionario.get(f["id"], [])
+        ]
+        resultado.append(novo)
+    return resultado
+
+
+def jornada_na_data(f, data_obj):
+    """A linha do funcionário com a jornada que valia em `data_obj` (a atual, se não houver
+    foto mais antiga cobrindo essa data). Aceita linha sem histórico (devolve ela mesma)."""
+    historico = getattr(f, "historico", ())
+    if historico:
+        iso = data_obj.isoformat()
+        for vigente_ate, linha in historico:
+            if iso <= vigente_ate:
+                return linha
+    return f
+
 
 COLUNAS_POR_VISAO = {
     "frequencia": ["Dias com ponto", "Faltas", "Atrasos", "Horas trabalhadas"],
@@ -162,6 +243,7 @@ def dia_e_util_para_funcionario(f, data_obj, feriados=None):
     dias ninguém tem expediente, não importa o turno/escala."""
     if feriados and data_obj.isoformat() in feriados:
         return False
+    f = jornada_na_data(f, data_obj)
     if f["escala_id"] is not None and f["escala_data_referencia"]:
         referencia = datetime.strptime(f["escala_data_referencia"], "%Y-%m-%d").date()
         ciclo_total = (f["escala_ciclo_dias_trabalho"] or 0) + (f["escala_ciclo_dias_descanso"] or 0)
@@ -180,6 +262,7 @@ def dia_e_util_para_funcionario(f, data_obj, feriados=None):
 def horas_esperadas_no_dia_segundos(f, data_obj, feriados=None):
     """Segundos esperados de trabalho nesse dia para esse funcionário — 0 se for dia de folga
     ou feriado."""
+    f = jornada_na_data(f, data_obj)
     if f["horario_entrada"] is None or not dia_e_util_para_funcionario(f, data_obj, feriados):
         return 0
     return duracao_turno_segundos(
@@ -237,6 +320,7 @@ def montar_historico_funcionario(conn, funcionario_id, data_inicio, data_fim):
     ).fetchone()
     if not funcionario:
         return None, []
+    funcionario = anexar_historico_jornada(conn, [funcionario])[0]
 
     registros = conn.execute(
         """SELECT registros.*, funcionarios.nome AS funcionario_nome
@@ -271,7 +355,7 @@ def montar_historico_funcionario(conn, funcionario_id, data_inicio, data_fim):
 
         entrada, saida_almoco, retorno, saida = preencher_colunas_historico(pares)
 
-        if ausencia is not None or funcionario["horario_entrada"] is None:
+        if ausencia is not None or jornada_na_data(funcionario, data_dia)["horario_entrada"] is None:
             horas_extras_texto = "-"
         else:
             horas_extras_texto = formatar_horas(
@@ -359,6 +443,7 @@ def montar_extrato_banco_horas(conn, funcionario_id, data_inicio, data_fim):
         return None, None, [], None
     if not funcionario["banco_horas_inicio"]:
         return funcionario, None, [], None
+    funcionario = anexar_historico_jornada(conn, [funcionario])[0]
 
     banco_inicio_obj = datetime.strptime(funcionario["banco_horas_inicio"], "%Y-%m-%d").date()
     data_ini_obj = datetime.strptime(data_inicio, "%Y-%m-%d").date()
@@ -474,6 +559,7 @@ def montar_espelho_mensal(conn, funcionario_id, ano, mes):
     ).fetchone()
     if not funcionario:
         return None, [], {}
+    funcionario = anexar_historico_jornada(conn, [funcionario])[0]
 
     _, ultimo_dia = calendar.monthrange(ano, mes)
     data_inicio = date(ano, mes, 1).isoformat()
@@ -511,7 +597,7 @@ def montar_espelho_mensal(conn, funcionario_id, ano, mes):
 
         entrada, saida_almoco, retorno, saida = preencher_colunas_historico(pares)
 
-        if ausencia is not None or funcionario["horario_entrada"] is None:
+        if ausencia is not None or jornada_na_data(funcionario, data_dia)["horario_entrada"] is None:
             horas_extras_segundos = 0
             horas_extras_texto = "-"
         else:
@@ -564,7 +650,7 @@ def calcular_stats_funcionarios_periodo(conn, data_inicio, data_fim, funcionario
     if funcionario_id:
         query += " AND funcionarios.id = ?"
         params.append(funcionario_id)
-    funcionarios = conn.execute(query, params).fetchall()
+    funcionarios = anexar_historico_jornada(conn, conn.execute(query, params).fetchall())
 
     if not funcionarios:
         return {}
@@ -622,13 +708,14 @@ def calcular_stats_funcionarios_periodo(conn, data_inicio, data_fim, funcionario
         horas_esperadas_seg = 0
 
         for d in dias:
-            if f["horario_entrada"] is not None:
-                dia_util = dia_e_util_para_funcionario(f, d["data"], feriados)
-                horas_esperadas_dia = horas_esperadas_no_dia_segundos(f, d["data"], feriados)
+            fd = jornada_na_data(f, d["data"])  # jornada que valia nesse dia
+            if fd["horario_entrada"] is not None:
+                dia_util = dia_e_util_para_funcionario(fd, d["data"], feriados)
+                horas_esperadas_dia = horas_esperadas_no_dia_segundos(fd, d["data"], feriados)
                 if dia_util:
                     entrada_dia, _saida_almoco_dia, _retorno_dia, saida_dia = preencher_colunas_historico(d["pares"])
                     limite_entrada = (
-                        datetime.strptime(f["horario_entrada"], "%H:%M") + timedelta(minutes=f["tolerancia_minutos"])
+                        datetime.strptime(fd["horario_entrada"], "%H:%M") + timedelta(minutes=fd["tolerancia_minutos"])
                     ).time()
                     if entrada_dia:
                         chegada = datetime.strptime(entrada_dia["timestamp"], "%Y-%m-%d %H:%M:%S").time()
@@ -637,10 +724,10 @@ def calcular_stats_funcionarios_periodo(conn, data_inicio, data_fim, funcionario
                             atraso_acumulado_seg += (
                                 datetime.combine(d["data"], chegada) - datetime.combine(d["data"], limite_entrada)
                             ).total_seconds()
-                    if saida_dia and f["tolerancia_saida_minutos"] is not None:
+                    if saida_dia and fd["tolerancia_saida_minutos"] is not None:
                         limite_saida = (
-                            datetime.strptime(f["horario_saida"], "%H:%M")
-                            - timedelta(minutes=f["tolerancia_saida_minutos"])
+                            datetime.strptime(fd["horario_saida"], "%H:%M")
+                            - timedelta(minutes=fd["tolerancia_saida_minutos"])
                         ).time()
                         saida_hora = datetime.strptime(saida_dia["timestamp"], "%Y-%m-%d %H:%M:%S").time()
                         if saida_hora < limite_saida:
@@ -891,7 +978,9 @@ def montar_folha_ponto_mensal(conn, ano, mes, funcionario_id=None):
     if funcionario_id:
         query += " AND funcionarios.id = ?"
         params.append(funcionario_id)
-    funcionarios = sorted(conn.execute(query, params).fetchall(), key=_chave_ordenacao_folha_ponto)
+    funcionarios = sorted(
+        anexar_historico_jornada(conn, conn.execute(query, params).fetchall()), key=_chave_ordenacao_folha_ponto
+    )
     if not funcionarios:
         return {"ultimo_dia": ultimo_dia, "dias_semana_abrev": dias_semana_abrev, "linhas": []}
 

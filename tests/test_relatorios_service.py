@@ -453,3 +453,59 @@ def test_hoje_ainda_nao_conta_como_falta(conn):
     stats = calcular_stats_funcionarios_periodo(conn, hoje, hoje)[func_id]
     assert stats["faltas"] == 0
     assert stats["horas_esperadas_seg"] == 0
+
+
+# ---------- Histórico de jornada ----------
+
+from relatorios_service import jornadas_atuais, registrar_mudancas_de_jornada  # noqa: E402
+
+
+def _turno_tarde_com_funcionaria(conn):
+    turno_id = conn.execute(
+        "INSERT INTO turnos (nome, horario_entrada, horario_saida, tolerancia_minutos, dias_semana) "
+        "VALUES ('tarde', '13:00', '17:00', 10, '0,1,2,3,4')"
+    ).lastrowid
+    func_id = conn.execute(
+        "INSERT INTO funcionarios (nome, codigo, situacao, turno_id) VALUES ('Gil Turno', 'GGG777', 'ativo', ?)",
+        (turno_id,),
+    ).lastrowid
+    for dia in ("2026-01-05", "2026-01-06"):
+        conn.execute("INSERT INTO registros (funcionario_id, tipo, timestamp) VALUES (?, 'entrada', ?)", (func_id, f"{dia} 13:00:00"))
+        conn.execute("INSERT INTO registros (funcionario_id, tipo, timestamp) VALUES (?, 'saida', ?)", (func_id, f"{dia} 17:00:00"))
+    conn.commit()
+    return turno_id, func_id
+
+
+def test_mudar_horario_do_turno_nao_altera_meses_passados(conn):
+    turno_id, func_id = _turno_tarde_com_funcionaria(conn)
+
+    antes = jornadas_atuais(conn)
+    conn.execute("UPDATE turnos SET horario_entrada = '08:00', horario_saida = '12:00' WHERE id = ?", (turno_id,))
+    registrar_mudancas_de_jornada(conn, antes, hoje=date(2026, 2, 1))  # nova jornada vale de 01/02 em diante
+    conn.commit()
+
+    stats = calcular_stats_funcionarios_periodo(conn, "2026-01-05", "2026-01-06")[func_id]
+    assert stats["atrasos"] == 0  # com o horário novo (08:00), chegar às 13:00 seria atraso
+    assert stats["horas_extras_seg"] == 0
+    assert stats["horas_esperadas_seg"] == 2 * 4 * 3600
+
+
+def test_varias_mudancas_no_mesmo_dia_guardam_a_jornada_original(conn):
+    turno_id, func_id = _turno_tarde_com_funcionaria(conn)
+    for entrada in ("08:00", "09:00"):
+        antes = jornadas_atuais(conn)
+        conn.execute("UPDATE turnos SET horario_entrada = ? WHERE id = ?", (entrada, turno_id))
+        registrar_mudancas_de_jornada(conn, antes, hoje=date(2026, 2, 1))
+    conn.commit()
+
+    linhas = conn.execute("SELECT dados FROM jornada_historico WHERE funcionario_id = ?", (func_id,)).fetchall()
+    assert len(linhas) == 1
+    assert '"horario_entrada": "13:00"' in linhas[0]["dados"]
+
+
+def test_renomear_turno_nao_cria_historico(conn):
+    turno_id, _ = _turno_tarde_com_funcionaria(conn)
+    antes = jornadas_atuais(conn)
+    conn.execute("UPDATE turnos SET nome = 'tarde (novo nome)' WHERE id = ?", (turno_id,))
+    registrar_mudancas_de_jornada(conn, antes)
+    assert conn.execute("SELECT COUNT(*) c FROM jornada_historico").fetchone()["c"] == 0

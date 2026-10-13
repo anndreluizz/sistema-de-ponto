@@ -320,3 +320,27 @@ def test_bater_ponto_duas_vezes_seguidas_registra_so_uma(cliente):
     conexao = db_module.get_db()
     assert conexao.execute("SELECT COUNT(*) c FROM registros").fetchone()["c"] == 1
     conexao.close()
+
+
+def test_editar_turno_pela_tela_guarda_jornada_antiga(cliente):
+    conexao = db_module.get_db()
+    turno_id = conexao.execute(
+        "INSERT INTO turnos (nome, horario_entrada, horario_saida, tolerancia_minutos, dias_semana) "
+        "VALUES ('manha', '08:00', '12:00', 10, '0,1,2,3,4')"
+    ).lastrowid
+    conexao.execute("INSERT INTO funcionarios (nome, codigo, situacao, turno_id) VALUES ('Zzz Jornada', 'JJJ1', 'ativo', ?)", (turno_id,))
+    conexao.commit()
+    conexao.close()
+    _criar_usuario("admin_jornada", "SenhaForte123!", "administrador")
+    _login(cliente, "admin_jornada", "SenhaForte123!")
+    token = _csrf_token(cliente.get("/admin/turnos").get_data(as_text=True))
+
+    cliente.post(f"/admin/turnos/{turno_id}/editar", data={
+        "csrf_token": token, "nome": "manha", "horario_entrada": "07:00", "horario_saida": "11:00",
+        "tolerancia_minutos": "10", "tolerancia_saida_minutos": "10", "dias_semana": ["0", "1", "2", "3", "4"],
+    })
+
+    conexao = db_module.get_db()
+    linha = conexao.execute("SELECT dados FROM jornada_historico").fetchone()
+    conexao.close()
+    assert linha is not None and '"horario_entrada": "08:00"' in linha["dados"]

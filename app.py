@@ -259,6 +259,7 @@ def injetar_notificacoes():
                 {relatorios_service.SQL_JOIN_TURNO_EFETIVO}
                 WHERE funcionarios.situacao = 'ativo'"""
         ).fetchall()
+        ativos = relatorios_service.anexar_historico_jornada(conn, ativos)
         ultimos = {
             r["funcionario_id"]: datetime.strptime(r["ultimo"], "%Y-%m-%d %H:%M:%S").date()
             for r in conn.execute(
@@ -1270,10 +1271,12 @@ def salvar_funcionario(conn, funcionario_id):
             registrar_auditoria(conn, "criar", "funcionario", funcionario_id, f"nome={nome}")
         else:
             set_clause = ", ".join(f"{campo}=?" for campo in campos)
+            jornadas_antes = relatorios_service.jornadas_atuais(conn)
             conn.execute(
                 f"UPDATE funcionarios SET {set_clause} WHERE id=?",
                 valores + [funcionario_id],
             )
+            relatorios_service.registrar_mudancas_de_jornada(conn, jornadas_antes)
             conn.commit()
             registrar_auditoria(conn, "editar", "funcionario", funcionario_id, f"nome={nome}")
     except sqlite3.IntegrityError:
@@ -1806,6 +1809,7 @@ def editar_turno(turno_id):
         if erro:
             flash(erro, "erro")
         else:
+            jornadas_antes = relatorios_service.jornadas_atuais(conn)
             conn.execute(
                 """UPDATE turnos SET nome=?, horario_entrada=?, horario_saida=?, tolerancia_minutos=?,
                    tolerancia_saida_minutos=?, dias_semana=?, horario_saida_almoco=?, horario_retorno_almoco=?
@@ -1822,6 +1826,7 @@ def editar_turno(turno_id):
                     turno_id,
                 ),
             )
+            relatorios_service.registrar_mudancas_de_jornada(conn, jornadas_antes)
             conn.commit()
             registrar_auditoria(conn, "editar", "turno", turno_id, f"nome={dados['nome']}")
             flash("Turno atualizado.", "sucesso")
@@ -1914,6 +1919,7 @@ def editar_escala(escala_id):
         if erro:
             flash(erro, "erro")
         else:
+            jornadas_antes = relatorios_service.jornadas_atuais(conn)
             conn.execute(
                 """UPDATE escalas SET nome=?, turno_id=?, ciclo_dias_trabalho=?, ciclo_dias_descanso=?
                    WHERE id=?""",
@@ -1925,6 +1931,7 @@ def editar_escala(escala_id):
                     escala_id,
                 ),
             )
+            relatorios_service.registrar_mudancas_de_jornada(conn, jornadas_antes)
             conn.commit()
             registrar_auditoria(conn, "editar", "escala", escala_id, f"nome={dados['nome']}")
             flash("Escala atualizada.", "sucesso")

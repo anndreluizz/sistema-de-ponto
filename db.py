@@ -398,6 +398,18 @@ def init_db():
 
             CREATE INDEX IF NOT EXISTS idx_compensacoes_funcionario ON compensacoes_banco_horas(funcionario_id, data);
 
+            -- "Foto" da jornada (turno/escala efetivos) que valia até `vigente_ate`, gravada
+            -- quando ela muda — assim trocar o turno não recalcula meses passados.
+            -- `dados` é JSON com as colunas de relatorios_service.COLUNAS_JORNADA.
+            CREATE TABLE IF NOT EXISTS jornada_historico (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                funcionario_id INTEGER NOT NULL REFERENCES funcionarios(id),
+                vigente_ate TEXT NOT NULL,
+                dados TEXT NOT NULL,
+                criado_em TEXT NOT NULL,
+                UNIQUE (funcionario_id, vigente_ate)
+            );
+
             CREATE TABLE IF NOT EXISTS usuarios (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 nome TEXT NOT NULL DEFAULT '',
