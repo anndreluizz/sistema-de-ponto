@@ -138,7 +138,15 @@ NOMES_MESES = {
 
 def carregar_ou_criar_secret_key():
     if SECRET_KEY_PATH.exists():
-        return SECRET_KEY_PATH.read_text().strip()
+        try:
+            return SECRET_KEY_PATH.read_text().strip()
+        except PermissionError:
+            sys.exit(
+                "ERRO: este usuario do Windows nao tem permissao para ler o arquivo .secret_key.\n"
+                "O sistema precisa ser iniciado pelo mesmo usuario que o instalou (ou por um\n"
+                "Administrador). Para liberar outro usuario, um Administrador pode rodar nesta pasta:\n"
+                "    icacls .secret_key /reset"
+            )
     chave = secrets.token_hex(32)
     SECRET_KEY_PATH.write_text(chave)
     return chave
@@ -704,8 +712,8 @@ def calcular_dashboard(conn):
                   funcionarios.nome AS funcionario_nome
            FROM registros
            JOIN funcionarios ON funcionarios.id = registros.funcionario_id
-           WHERE date(registros.timestamp) = ? ORDER BY registros.funcionario_id, registros.timestamp""",
-        (hoje,),
+           WHERE registros.timestamp >= ? AND registros.timestamp < date(?, '+1 day') ORDER BY registros.funcionario_id, registros.timestamp""",
+        (hoje, hoje),
     ).fetchall()
 
     primeiro_por_func, ultimo_por_func = {}, {}
@@ -805,9 +813,9 @@ def calcular_dashboard(conn):
     ultimo_ponto = conn.execute(
         """SELECT registros.*, funcionarios.nome, funcionarios.foto, funcionarios.cargo
            FROM registros JOIN funcionarios ON funcionarios.id = registros.funcionario_id
-           WHERE date(registros.timestamp) = ?
+           WHERE registros.timestamp >= ? AND registros.timestamp < date(?, '+1 day')
            ORDER BY registros.timestamp DESC LIMIT 1""",
-        (hoje,),
+        (hoje, hoje),
     ).fetchone()
 
     return {
@@ -835,8 +843,8 @@ def calcular_presenca_ultimos_dias(conn, dias=7):
         presentes = conn.execute(
             """SELECT COUNT(DISTINCT registros.funcionario_id) AS n
                FROM registros JOIN funcionarios ON funcionarios.id = registros.funcionario_id
-               WHERE date(registros.timestamp) = ? AND funcionarios.situacao = 'ativo'""",
-            (dia.isoformat(),),
+               WHERE registros.timestamp >= ? AND registros.timestamp < date(?, '+1 day') AND funcionarios.situacao = 'ativo'""",
+            (dia.isoformat(), dia.isoformat()),
         ).fetchone()["n"]
         resultado.append(
             {
@@ -875,7 +883,7 @@ def calcular_presenca_por_setor(conn, dias=7):
         dias_com_presenca = conn.execute(
             f"""SELECT COUNT(DISTINCT date(timestamp)) AS n FROM registros
                 WHERE funcionario_id IN ({placeholders})
-                  AND date(timestamp) BETWEEN ? AND ?""",
+                  AND timestamp >= date(?) AND timestamp < date(?, '+1 day')""",
             [*ids_funcionarios, data_inicio.isoformat(), data_fim.isoformat()],
         ).fetchone()["n"]
 
@@ -2197,7 +2205,7 @@ def ajustes_ponto():
             SELECT registros.*, funcionarios.nome AS funcionario_nome
             FROM registros
             JOIN funcionarios ON funcionarios.id = registros.funcionario_id
-            WHERE date(registros.timestamp) BETWEEN date(?) AND date(?)
+            WHERE registros.timestamp >= date(?) AND registros.timestamp < date(?, '+1 day')
         """
         params = [data_inicio, data_fim]
         if funcionario_id:
@@ -2594,7 +2602,7 @@ def exportar_csv():
                    funcionarios.nome AS funcionario_nome, funcionarios.cargo
             FROM registros
             JOIN funcionarios ON funcionarios.id = registros.funcionario_id
-            WHERE date(registros.timestamp) BETWEEN date(?) AND date(?)
+            WHERE registros.timestamp >= date(?) AND registros.timestamp < date(?, '+1 day')
         """
         params = [data_inicio, data_fim]
         if funcionario_id:
@@ -2773,7 +2781,7 @@ def auditoria():
         data_inicio = request.args.get("data_inicio") or hoje.replace(day=1).isoformat()
         data_fim = request.args.get("data_fim") or hoje.isoformat()
 
-        condicoes = ["date(timestamp) BETWEEN date(?) AND date(?)"]
+        condicoes = ["timestamp >= date(?) AND timestamp < date(?, '+1 day')"]
         params = [data_inicio, data_fim]
         if usuario_filtro:
             condicoes.append("usuario = ?")

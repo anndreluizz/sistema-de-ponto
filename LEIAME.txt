@@ -297,3 +297,18 @@ PERGUNTAS FREQUENTES
 
 - "Como muda a cor do sistema?"
   Em "Configuracoes" (so Administrador), tem um seletor de cor principal.
+
+- "Vou instalar num computador novo que nao tem internet. Funciona?"
+  Sim, se esse computador tiver Python 3.12 (64 bits). A pasta "wheels"
+  ja traz todos os pacotes necessarios: copie a pasta inteira do sistema
+  e rode o iniciar.bat. Com outra versao do Python, ele tenta baixar pela
+  internet (nas mesmas versoes, listadas em constraints.txt).
+
+- "Apareceu 'nao tem permissao para ler o arquivo .secret_key'."
+  Por seguranca, so o usuario do Windows que iniciou o sistema (e os
+  Administradores) conseguem ler esse arquivo. Inicie pelo mesmo usuario
+  de sempre, ou peca a um Administrador para rodar, nesta pasta:
+      icacls .secret_key /reset
+
+- "Deu erro numa tela. Onde vejo o motivo?"
+  No arquivo erros.log, na pasta do sistema.

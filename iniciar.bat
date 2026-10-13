@@ -1,5 +1,5 @@
 @echo off
-setlocal
+setlocal EnableDelayedExpansion
 cd /d %~dp0
 
 if not exist venv (
@@ -26,9 +26,15 @@ REM So chama o pip se faltar alguma dependencia: antes ele rodava toda vez e,
 REM sem internet, atrasava ou travava a inicializacao.
 venv\Scripts\python.exe -c "import flask, flask_wtf, waitress, PIL, fpdf, openpyxl, qrcode" 2>nul
 if errorlevel 1 (
-    echo Instalando dependencias - precisa de internet so desta vez, aguarde...
-    venv\Scripts\python.exe -m pip install -q -r requirements.txt
-    if errorlevel 1 (
+    echo Instalando dependencias, aguarde...
+    REM Primeiro tenta pela pasta "wheels" - pacotes ja baixados, sem internet. Se ela nao
+    REM servir ^(ex.: outra versao do Python^), cai pra internet com as mesmas versoes.
+    set INSTALOU=0
+    if exist wheels (
+        venv\Scripts\python.exe -m pip install -q --no-index --find-links wheels -r requirements.txt -c constraints.txt && set INSTALOU=1
+    )
+    if "!INSTALOU!"=="0" venv\Scripts\python.exe -m pip install -q -r requirements.txt -c constraints.txt && set INSTALOU=1
+    if "!INSTALOU!"=="0" (
         echo.
         echo ERRO: nao foi possivel instalar as dependencias.
         echo Verifique a conexao com a internet e rode este arquivo de novo.
@@ -52,6 +58,10 @@ if errorlevel 1 (
     exit /b 1
 )
 
+REM A chave secreta assina os logins: quem a lesse poderia entrar como administrador.
+REM Deixa so este usuario do Windows, os Administradores e o SISTEMA lerem o arquivo.
+if exist .secret_key icacls .secret_key /inheritance:r /grant:r "%USERNAME%:F" "*S-1-5-32-544:F" "*S-1-5-18:F" >nul 2>&1
+
 echo.
 echo Iniciando o servidor do sistema de ponto...
 REM "cmd /k" mantem a janela aberta se o servidor parar com erro, pra dar pra ler o motivo.
@@ -62,7 +72,7 @@ ping -n 3 127.0.0.1 >nul
 start "" http://127.0.0.1:5000/
 
 echo.
-echo Tudo pronto! O totem foi aberto no navegador.
+echo Tudo pronto. O totem foi aberto no navegador.
 echo Para PARAR o sistema, feche a janela "Servidor - Sistema de Ponto".
 echo Esta janela aqui ja pode ser fechada.
 echo.

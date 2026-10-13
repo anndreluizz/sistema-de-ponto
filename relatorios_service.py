@@ -130,7 +130,7 @@ CHAVES_POR_VISAO = {
 # Parâmetros: (data_inicio, data_fim, data_inicio, data_fim).
 SQL_FUNCIONARIO_NO_PERIODO = """(funcionarios.situacao = 'ativo'
     OR EXISTS (SELECT 1 FROM registros r WHERE r.funcionario_id = funcionarios.id
-               AND date(r.timestamp) BETWEEN ? AND ?)
+               AND r.timestamp >= date(?) AND r.timestamp < date(?, '+1 day'))
     OR EXISTS (SELECT 1 FROM ausencias a WHERE a.funcionario_id = funcionarios.id
                AND a.data BETWEEN ? AND ?))"""
 
@@ -326,7 +326,7 @@ def montar_historico_funcionario(conn, funcionario_id, data_inicio, data_fim):
         """SELECT registros.*, funcionarios.nome AS funcionario_nome
            FROM registros
            JOIN funcionarios ON funcionarios.id = registros.funcionario_id
-           WHERE registros.funcionario_id = ? AND date(registros.timestamp) BETWEEN date(?) AND date(?)
+           WHERE registros.funcionario_id = ? AND registros.timestamp >= date(?) AND registros.timestamp < date(?, '+1 day')
            ORDER BY registros.timestamp""",
         (funcionario_id, data_inicio, data_fim),
     ).fetchall()
@@ -396,7 +396,7 @@ def calcular_saldo_banco_horas_ate(conn, f, ate_data):
     registros = conn.execute(
         """SELECT registros.*, funcionarios.nome AS funcionario_nome
            FROM registros JOIN funcionarios ON funcionarios.id = registros.funcionario_id
-           WHERE registros.funcionario_id = ? AND date(registros.timestamp) BETWEEN date(?) AND date(?)
+           WHERE registros.funcionario_id = ? AND registros.timestamp >= date(?) AND registros.timestamp < date(?, '+1 day')
            ORDER BY registros.timestamp""",
         (f["id"], data_ini_obj.isoformat(), data_fim_obj.isoformat()),
     ).fetchall()
@@ -456,7 +456,7 @@ def montar_extrato_banco_horas(conn, funcionario_id, data_inicio, data_fim):
     registros = conn.execute(
         """SELECT registros.*, funcionarios.nome AS funcionario_nome
            FROM registros JOIN funcionarios ON funcionarios.id = registros.funcionario_id
-           WHERE registros.funcionario_id = ? AND date(registros.timestamp) BETWEEN date(?) AND date(?)
+           WHERE registros.funcionario_id = ? AND registros.timestamp >= date(?) AND registros.timestamp < date(?, '+1 day')
            ORDER BY registros.timestamp""",
         (funcionario_id, data_ini_efetiva.isoformat(), data_fim_obj.isoformat()),
     ).fetchall()
@@ -529,9 +529,9 @@ def calcular_horas_extras_hoje(conn):
         f"""SELECT registros.*, funcionarios.nome AS funcionario_nome
             FROM registros
             JOIN funcionarios ON funcionarios.id = registros.funcionario_id
-            WHERE registros.funcionario_id IN ({placeholders}) AND date(registros.timestamp) = ?
+            WHERE registros.funcionario_id IN ({placeholders}) AND registros.timestamp >= ? AND registros.timestamp < date(?, '+1 day')
             ORDER BY funcionarios.nome, registros.timestamp""",
-        [*ids_funcionarios, hoje],
+        [*ids_funcionarios, hoje, hoje],
     ).fetchall()
 
     dias_por_funcionario = {}
@@ -569,7 +569,7 @@ def montar_espelho_mensal(conn, funcionario_id, ano, mes):
         """SELECT registros.*, funcionarios.nome AS funcionario_nome
            FROM registros
            JOIN funcionarios ON funcionarios.id = registros.funcionario_id
-           WHERE registros.funcionario_id = ? AND date(registros.timestamp) BETWEEN date(?) AND date(?)
+           WHERE registros.funcionario_id = ? AND registros.timestamp >= date(?) AND registros.timestamp < date(?, '+1 day')
            ORDER BY registros.timestamp""",
         (funcionario_id, data_inicio, data_fim),
     ).fetchall()
@@ -665,7 +665,7 @@ def calcular_stats_funcionarios_periodo(conn, data_inicio, data_fim, funcionario
             FROM registros
             JOIN funcionarios ON funcionarios.id = registros.funcionario_id
             WHERE registros.funcionario_id IN ({placeholders})
-              AND date(registros.timestamp) BETWEEN date(?) AND date(?)
+              AND registros.timestamp >= date(?) AND registros.timestamp < date(?, '+1 day')
             ORDER BY funcionarios.nome, registros.timestamp""",
         [*ids_funcionarios, data_inicio, data_fim],
     ).fetchall()
@@ -990,7 +990,7 @@ def montar_folha_ponto_mensal(conn, ano, mes, funcionario_id=None):
     registros = conn.execute(
         f"""SELECT DISTINCT funcionario_id, date(timestamp) AS dia FROM registros
             WHERE funcionario_id IN ({placeholders})
-              AND date(timestamp) BETWEEN ? AND ?""",
+              AND timestamp >= date(?) AND timestamp < date(?, '+1 day')""",
         [*ids_funcionarios, data_inicio.isoformat(), data_fim.isoformat()],
     ).fetchall()
     dias_com_ponto = {}

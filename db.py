@@ -336,6 +336,7 @@ def init_db():
 
             CREATE INDEX IF NOT EXISTS idx_registros_funcionario
                 ON registros(funcionario_id, timestamp);
+            CREATE INDEX IF NOT EXISTS idx_registros_timestamp ON registros(timestamp);
 
             CREATE TABLE IF NOT EXISTS admin (
                 usuario TEXT PRIMARY KEY,
