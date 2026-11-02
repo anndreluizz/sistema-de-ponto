@@ -34,34 +34,6 @@
       setInterval(atualizarRelogio, 1000);
     }
 
-    var botaoSidebar = document.getElementById("botao-recolher-sidebar");
-    if (botaoSidebar) {
-      if (localStorage.getItem("sidebarRecolhida") === "1") {
-        document.body.classList.add("sidebar-recolhida");
-      }
-      botaoSidebar.addEventListener("click", function () {
-        document.body.classList.toggle("sidebar-recolhida");
-        localStorage.setItem(
-          "sidebarRecolhida",
-          document.body.classList.contains("sidebar-recolhida") ? "1" : "0"
-        );
-      });
-    }
-
-    var botaoAbrirMobile = document.getElementById("botao-abrir-sidebar");
-    if (botaoAbrirMobile) {
-      botaoAbrirMobile.addEventListener("click", function (evento) {
-        evento.stopPropagation();
-        document.body.classList.toggle("sidebar-mobile-aberta");
-      });
-      // No celular, tocar fora do menu fecha ele.
-      document.addEventListener("click", function (evento) {
-        if (document.body.classList.contains("sidebar-mobile-aberta") && !evento.target.closest(".sidebar")) {
-          document.body.classList.remove("sidebar-mobile-aberta");
-        }
-      });
-    }
-
     var previewFoto = document.getElementById("preview-foto");
     var inputFoto = document.getElementById("input-foto");
     if (previewFoto && inputFoto) {

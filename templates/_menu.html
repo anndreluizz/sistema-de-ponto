@@ -1,0 +1,111 @@
+{# Menu no topo. Telas do dia a dia ficam à vista; cadastros e administração, em listas.
+   Abaixo de 992px vira o menu recolhido do Bootstrap (botão ☰). #}
+{% set ep = request.endpoint %}
+{% set perfil = session.usuario_perfil %}
+{% set telas_cadastros = ('setores', 'turnos', 'escalas', 'feriados') %}
+{% set telas_sistema = ('configuracoes', 'usuarios', 'novo_usuario', 'editar_usuario', 'auditoria', 'backup') %}
+
+<header class="menu-topo navbar navbar-expand-lg sem-impressao">
+  <div class="container-fluid menu-topo-faixa">
+    <a class="menu-marca" href="{{ url_for('dashboard') }}">
+      <i class="bi bi-fingerprint"></i><span>Ponto</span>
+    </a>
+
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#menu-principal"
+            aria-controls="menu-principal" aria-expanded="false" aria-label="Abrir menu">
+      <i class="bi bi-list"></i>
+    </button>
+
+    <nav class="collapse navbar-collapse" id="menu-principal">
+      <ul class="navbar-nav menu-links">
+        <li class="nav-item">
+          <a class="nav-link {{ 'active' if ep == 'dashboard' }}" href="{{ url_for('dashboard') }}">Painel</a>
+        </li>
+
+        {% if perfil in ('administrador', 'rh', 'direcao') %}
+          <li class="nav-item">
+            <a class="nav-link {{ 'active' if ep in ('funcionarios', 'novo_funcionario', 'editar_funcionario', 'historico_funcionario', 'banco_horas_funcionario', 'historico_alteracoes_funcionario') }}"
+               href="{{ url_for('funcionarios') }}">Funcionários</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link {{ 'active' if ep == 'relatorios' }}" href="{{ url_for('relatorios') }}">Relatórios</a>
+          </li>
+        {% endif %}
+
+        {% if perfil in ('administrador', 'rh') %}
+          <li class="nav-item">
+            <a class="nav-link {{ 'active' if ep == 'ajustes_ponto' }}" href="{{ url_for('ajustes_ponto') }}">Ajustes de ponto</a>
+          </li>
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle {{ 'active' if ep in telas_cadastros }}" href="#" role="button"
+               data-bs-toggle="dropdown" aria-expanded="false">Cadastros</a>
+            <ul class="dropdown-menu">
+              <li><a class="dropdown-item {{ 'active' if ep == 'setores' }}" href="{{ url_for('setores') }}">Setores</a></li>
+              <li><a class="dropdown-item {{ 'active' if ep == 'turnos' }}" href="{{ url_for('turnos') }}">Turnos</a></li>
+              <li><a class="dropdown-item {{ 'active' if ep == 'escalas' }}" href="{{ url_for('escalas') }}">Escalas</a></li>
+              <li><a class="dropdown-item {{ 'active' if ep == 'feriados' }}" href="{{ url_for('feriados') }}">Feriados</a></li>
+            </ul>
+          </li>
+        {% endif %}
+
+        {% if perfil == 'administrador' %}
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle {{ 'active' if ep in telas_sistema }}" href="#" role="button"
+               data-bs-toggle="dropdown" aria-expanded="false">Sistema</a>
+            <ul class="dropdown-menu">
+              <li><a class="dropdown-item {{ 'active' if ep == 'configuracoes' }}" href="{{ url_for('configuracoes') }}">Configurações</a></li>
+              <li><a class="dropdown-item {{ 'active' if ep in ('usuarios', 'novo_usuario', 'editar_usuario') }}" href="{{ url_for('usuarios') }}">Usuários</a></li>
+              <li><a class="dropdown-item {{ 'active' if ep == 'auditoria' }}" href="{{ url_for('auditoria') }}">Auditoria</a></li>
+              <li><a class="dropdown-item {{ 'active' if ep == 'backup' }}" href="{{ url_for('backup') }}">Backup</a></li>
+            </ul>
+          </li>
+        {% endif %}
+      </ul>
+    </nav>
+
+    <div class="menu-ferramentas">
+      <div class="topbar-relogio">
+        <span id="topbar-hora"></span>
+        <span id="topbar-data" class="topbar-data-completa"></span>
+      </div>
+
+      {% if perfil in ('administrador', 'rh') %}
+        <div class="dropdown">
+          <button class="topbar-conta dropdown-toggle position-relative" data-bs-toggle="dropdown" type="button" title="Avisos">
+            <i class="bi bi-bell"></i>
+            {% if notificacoes %}
+              <span class="badge rounded-pill bg-danger position-absolute top-0 start-100 translate-middle" style="font-size:0.6rem;">
+                {{ notificacoes|length }}
+              </span>
+            {% endif %}
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end" style="min-width: 320px;">
+            {% for aviso in notificacoes %}
+              <li>
+                <a class="dropdown-item d-flex align-items-start gap-2 py-2" href="{{ aviso.link }}">
+                  <i class="bi {{ aviso.icone }} mt-1"></i>
+                  <span class="small">{{ aviso.texto }}</span>
+                </a>
+              </li>
+              {% if not loop.last %}<li><hr class="dropdown-divider"></li>{% endif %}
+            {% else %}
+              <li><span class="dropdown-item-text small text-secondary">Nenhum aviso no momento.</span></li>
+            {% endfor %}
+          </ul>
+        </div>
+      {% endif %}
+
+      <div class="dropdown">
+        <button class="topbar-conta dropdown-toggle" data-bs-toggle="dropdown" type="button" title="Conta">
+          <i class="bi bi-person-circle"></i>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end">
+          <li><a class="dropdown-item" href="{{ url_for('trocar_senha') }}"><i class="bi bi-key me-2"></i>Trocar senha</a></li>
+          <li><a class="dropdown-item" href="{{ url_for('kiosk') }}" target="_blank"><i class="bi bi-display me-2"></i>Ver totem</a></li>
+          <li><hr class="dropdown-divider"></li>
+          <li><a class="dropdown-item text-danger" href="{{ url_for('logout') }}"><i class="bi bi-box-arrow-right me-2"></i>Sair</a></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</header>

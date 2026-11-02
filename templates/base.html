@@ -16,76 +16,26 @@
       --bs-primary: {{ cor_primaria }};
       --bs-primary-rgb: {{ cor_primaria_rgb }};
     }
-    .sidebar { background: linear-gradient(180deg, #0f1f4d, {{ cor_primaria }}); }
     .card-indicador .bg-icone-primary { color: {{ cor_primaria }}; }
   </style>
   {% endif %}
   {% block cabecalho_extra %}{% endblock %}
 </head>
 <body>
-  {% include "_sidebar.html" %}
+  {% include "_menu.html" %}
 
   <div class="conteudo-principal">
-    <header class="topbar sem-impressao">
-      <button class="topbar-menu-mobile" id="botao-abrir-sidebar" type="button" title="Abrir menu">
-        <i class="bi bi-list"></i>
-      </button>
-
-      <nav aria-label="breadcrumb" class="topbar-breadcrumb">
-        <ol class="breadcrumb">
-          <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}"><i class="bi bi-house-door"></i></a></li>
-          {% for rotulo, endpoint in trilha_breadcrumb %}
-            <li class="breadcrumb-item"><a href="{{ url_for(endpoint) }}">{{ rotulo }}</a></li>
-          {% endfor %}
-          <li class="breadcrumb-item active" aria-current="page">{{ titulo_pagina }}</li>
-        </ol>
-      </nav>
-
-      <div class="topbar-relogio">
-        <span id="topbar-hora"></span>
-        <span id="topbar-data" class="topbar-data-completa"></span>
-      </div>
-
-      {% if session.usuario_perfil in ('administrador', 'rh') %}
-        <div class="dropdown">
-          <button class="topbar-conta dropdown-toggle position-relative" data-bs-toggle="dropdown" type="button" title="Avisos">
-            <i class="bi bi-bell"></i>
-            {% if notificacoes %}
-              <span class="badge rounded-pill bg-danger position-absolute top-0 start-100 translate-middle" style="font-size:0.6rem;">
-                {{ notificacoes|length }}
-              </span>
-            {% endif %}
-          </button>
-          <ul class="dropdown-menu dropdown-menu-end" style="min-width: 320px;">
-            {% for aviso in notificacoes %}
-              <li>
-                <a class="dropdown-item d-flex align-items-start gap-2 py-2" href="{{ aviso.link }}">
-                  <i class="bi {{ aviso.icone }} mt-1"></i>
-                  <span class="small">{{ aviso.texto }}</span>
-                </a>
-              </li>
-              {% if not loop.last %}<li><hr class="dropdown-divider"></li>{% endif %}
-            {% else %}
-              <li><span class="dropdown-item-text small text-secondary">Nenhum aviso no momento.</span></li>
-            {% endfor %}
-          </ul>
-        </div>
-      {% endif %}
-
-      <div class="dropdown">
-        <button class="topbar-conta dropdown-toggle" data-bs-toggle="dropdown" type="button" title="Conta">
-          <i class="bi bi-person-circle"></i>
-        </button>
-        <ul class="dropdown-menu dropdown-menu-end">
-          <li><a class="dropdown-item" href="{{ url_for('trocar_senha') }}"><i class="bi bi-key me-2"></i>Trocar senha</a></li>
-          <li><a class="dropdown-item" href="{{ url_for('kiosk') }}" target="_blank"><i class="bi bi-display me-2"></i>Ver totem</a></li>
-          <li><hr class="dropdown-divider"></li>
-          <li><a class="dropdown-item text-danger" href="{{ url_for('logout') }}"><i class="bi bi-box-arrow-right me-2"></i>Sair</a></li>
-        </ul>
-      </div>
-    </header>
-
     <main class="pagina-conteudo">
+      {% if trilha_breadcrumb %}
+        <nav aria-label="breadcrumb" class="trilha sem-impressao">
+          <ol class="breadcrumb">
+            {% for rotulo, endpoint in trilha_breadcrumb %}
+              <li class="breadcrumb-item"><a href="{{ url_for(endpoint) }}">{{ rotulo }}</a></li>
+            {% endfor %}
+            <li class="breadcrumb-item active" aria-current="page">{{ titulo_pagina }}</li>
+          </ol>
+        </nav>
+      {% endif %}
       {% block conteudo %}{% endblock %}
     </main>
   </div>
