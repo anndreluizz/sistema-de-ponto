@@ -78,14 +78,17 @@ a { text-decoration: none; }
 
 /* Menu recolhido (tablet e celular): as telas viram uma lista abaixo da barra */
 @media (max-width: 991.98px) {
-  .menu-topo-faixa { padding: 8px 16px; min-height: 56px; }
-  .menu-ferramentas { order: 2; }
+  .menu-topo-faixa { padding: 8px 16px; min-height: 56px; gap: 8px 10px; }
+  .menu-ferramentas { order: 2; gap: 8px; }
   .navbar-toggler { order: 3; }
   .navbar-collapse { order: 4; width: 100%; }
   .menu-links .nav-link { padding: 10px 4px !important; border-bottom: none; border-left: 3px solid transparent; padding-left: 12px !important; }
   .menu-links .nav-link.active { border-left-color: var(--bs-primary); }
   .topbar-data-completa { display: none; }
   .pagina-conteudo { padding: 18px 16px; }
+}
+@media (max-width: 575.98px) {
+  .topbar-relogio { display: none; }  /* no celular a hora já aparece na tela do aparelho */
 }
 
 /* ---------- Cards ---------- */
