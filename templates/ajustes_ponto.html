@@ -7,7 +7,7 @@
   <details class="horario">
     <summary class="{{ 'horario-manual' if registro.manual else '' }}"
              title="{{ ('Lançado à mão: ' ~ (registro.motivo or 'sem motivo')) if registro.manual else 'Clique para ajustar' }}">
-      {{ registro.timestamp[11:16] }}
+      {{ registro.timestamp[11:16] }}{% if registro.manual %} <span aria-hidden="true">✎</span><span class="visually-hidden">(lançado à mão)</span>{% endif %}
     </summary>
     <div class="horario-painel">
       <form method="post" action="{{ url_for('editar_registro', registro_id=registro.id) }}" class="d-flex flex-column gap-2">

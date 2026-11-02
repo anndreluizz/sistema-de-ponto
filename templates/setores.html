@@ -73,21 +73,21 @@
                       <form method="post" action="{{ url_for('editar_setor', setor_id=s.id) }}"
                             class="d-flex flex-column gap-2 mt-2 p-2 border rounded bg-light text-start">
                         {{ csrf_input() }}
-                        <input type="text" name="nome" value="{{ s.nome }}" class="form-control form-control-sm" placeholder="Nome">
+                        <label class="small text-secondary flex-fill mb-0">Nome<input type="text" name="nome" value="{{ s.nome }}" class="form-control form-control-sm" placeholder="Nome"></label>
                         <div class="d-flex gap-2">
-                          <select name="icone" class="form-select form-select-sm">
+                          <label class="small text-secondary flex-fill mb-0">Ícone<select name="icone" class="form-select form-select-sm">
                             <option value="">Nenhum</option>
                             {% for valor, rotulo in icones_disponiveis %}
                               <option value="{{ valor }}" {{ "selected" if s.icone == valor else "" }}>{{ rotulo }}</option>
                             {% endfor %}
-                          </select>
-                          <input type="color" name="cor" class="form-control form-control-color form-control-sm"
-                                 value="{{ s.cor or '#1E40AF' }}">
+                          </select></label>
+                          <label class="small text-secondary flex-fill mb-0">Cor<input type="color" name="cor" class="form-control form-control-color form-control-sm"
+                                 value="{{ s.cor or '#1E40AF' }}"></label>
                         </div>
-                        <input type="text" name="responsavel" value="{{ s.responsavel or '' }}"
-                               class="form-control form-control-sm" placeholder="Responsável">
-                        <input type="text" name="centro_custo" value="{{ s.centro_custo or '' }}"
-                               class="form-control form-control-sm" placeholder="Centro de custo">
+                        <label class="small text-secondary flex-fill mb-0">Responsável<input type="text" name="responsavel" value="{{ s.responsavel or '' }}"
+                               class="form-control form-control-sm" placeholder="Responsável"></label>
+                        <label class="small text-secondary flex-fill mb-0">Centro de custo<input type="text" name="centro_custo" value="{{ s.centro_custo or '' }}"
+                               class="form-control form-control-sm" placeholder="Centro de custo"></label>
                         <button type="submit" class="btn btn-sm btn-primary">Salvar</button>
                       </form>
                     </details>

@@ -102,7 +102,7 @@
                       <form method="post" action="{{ url_for('editar_turno', turno_id=t.id) }}"
                             class="d-flex flex-column gap-2 mt-2 p-2 border rounded bg-light text-start">
                         {{ csrf_input() }}
-                        <input type="text" name="nome" value="{{ t.nome }}" class="form-control form-control-sm" placeholder="Nome">
+                        <label class="small text-secondary flex-fill mb-0">Nome<input type="text" name="nome" value="{{ t.nome }}" class="form-control form-control-sm" placeholder="Nome"></label>
 
                         <div class="d-flex flex-wrap gap-2">
                           {% for valor, rotulo in dias_semana_opcoes %}
@@ -116,20 +116,20 @@
                         </div>
 
                         <div class="d-flex gap-2">
-                          <input type="time" name="horario_entrada" value="{{ t.horario_entrada }}" class="form-control form-control-sm">
-                          <input type="time" name="horario_saida" value="{{ t.horario_saida }}" class="form-control form-control-sm">
+                          <label class="small text-secondary flex-fill mb-0">Entrada<input type="time" name="horario_entrada" value="{{ t.horario_entrada }}" class="form-control form-control-sm"></label>
+                          <label class="small text-secondary flex-fill mb-0">Saída<input type="time" name="horario_saida" value="{{ t.horario_saida }}" class="form-control form-control-sm"></label>
                         </div>
                         <div class="d-flex gap-2">
-                          <input type="time" name="horario_saida_almoco" value="{{ t.horario_saida_almoco or '' }}"
-                                 class="form-control form-control-sm" title="Saída p/ almoço">
-                          <input type="time" name="horario_retorno_almoco" value="{{ t.horario_retorno_almoco or '' }}"
-                                 class="form-control form-control-sm" title="Retorno do almoço">
+                          <label class="small text-secondary flex-fill mb-0">Saída almoço<input type="time" name="horario_saida_almoco" value="{{ t.horario_saida_almoco or '' }}"
+                                 class="form-control form-control-sm" title="Saída p/ almoço"></label>
+                          <label class="small text-secondary flex-fill mb-0">Volta almoço<input type="time" name="horario_retorno_almoco" value="{{ t.horario_retorno_almoco or '' }}"
+                                 class="form-control form-control-sm" title="Retorno do almoço"></label>
                         </div>
                         <div class="d-flex gap-2">
-                          <input type="number" name="tolerancia_minutos" value="{{ t.tolerancia_minutos }}"
-                                 class="form-control form-control-sm" min="0" max="120" title="Tolerância de entrada">
-                          <input type="number" name="tolerancia_saida_minutos" value="{{ t.tolerancia_saida_minutos }}"
-                                 class="form-control form-control-sm" min="0" max="120" title="Tolerância de saída">
+                          <label class="small text-secondary flex-fill mb-0">Tolerância entrada (min)<input type="number" name="tolerancia_minutos" value="{{ t.tolerancia_minutos }}"
+                                 class="form-control form-control-sm" min="0" max="120" title="Tolerância de entrada"></label>
+                          <label class="small text-secondary flex-fill mb-0">Tolerância saída (min)<input type="number" name="tolerancia_saida_minutos" value="{{ t.tolerancia_saida_minutos }}"
+                                 class="form-control form-control-sm" min="0" max="120" title="Tolerância de saída"></label>
                         </div>
                         <button type="submit" class="btn btn-sm btn-primary">Salvar</button>
                       </form>

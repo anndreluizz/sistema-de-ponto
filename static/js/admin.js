@@ -52,3 +52,20 @@
     });
   });
 })();
+
+// Painéis de edição (<details> pequenos) fecham com Esc e com clique fora. "Mais informações" não entra.
+(function () {
+  var PAINEIS = "details.horario[open], details.d-inline-block[open]";
+  function fecharPaineis(excetoDentroDe) {
+    document.querySelectorAll(PAINEIS).forEach(function (d) {
+      if (!excetoDentroDe || !d.contains(excetoDentroDe)) d.removeAttribute("open");
+    });
+  }
+  document.addEventListener("keydown", function (e) {
+    if (e.key !== "Escape") return;
+    var aberto = document.activeElement && document.activeElement.closest(PAINEIS);
+    fecharPaineis(null);
+    if (aberto) aberto.querySelector("summary").focus();
+  });
+  document.addEventListener("click", function (e) { fecharPaineis(e.target); });
+})();

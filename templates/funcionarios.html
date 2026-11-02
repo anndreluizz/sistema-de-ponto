@@ -21,11 +21,11 @@
         <div class="col-md-4">
           <div class="input-group">
             <span class="input-group-text"><i class="bi bi-search"></i></span>
-            <input type="text" id="busca-funcionario" class="form-control" placeholder="Buscar por nome, cargo ou matrícula...">
+            <input type="text" id="busca-funcionario" class="form-control" aria-label="Buscar funcionário" placeholder="Buscar por nome, cargo ou matrícula...">
           </div>
         </div>
         <div class="col-md-3">
-          <select id="filtro-situacao" class="form-select">
+          <select id="filtro-situacao" class="form-select" aria-label="Filtrar por situação">
             <option value="">Todas as situações</option>
             <option value="ativo">Ativo</option>
             <option value="inativo">Inativo</option>
@@ -34,13 +34,13 @@
           </select>
         </div>
         <div class="col-md-3">
-          <select id="filtro-setor" class="form-select">
+          <select id="filtro-setor" class="form-select" aria-label="Filtrar por setor">
             <option value="">Todos os setores</option>
             {% for s in setores %}<option value="{{ s.id }}">{{ s.nome }}</option>{% endfor %}
           </select>
         </div>
         <div class="col-md-2">
-          <select id="filtro-turno" class="form-select">
+          <select id="filtro-turno" class="form-select" aria-label="Filtrar por turno">
             <option value="">Todos os turnos</option>
             {% for t in turnos %}<option value="{{ t.id }}">{{ t.nome }}</option>{% endfor %}
           </select>
@@ -56,8 +56,8 @@
           <tr>
             <th>Funcionário</th>
             <th>Setor</th>
-            <th>Turno</th>
-            <th>Último ponto</th>
+            <th class="d-none d-md-table-cell">Turno</th>
+            <th class="d-none d-md-table-cell">Último ponto</th>
             <th>Status</th>
             <th class="text-end">Ações</th>
           </tr>
@@ -81,8 +81,8 @@
               </div>
             </td>
             <td>{{ f.setor_nome or "—" }}</td>
-            <td>{{ f.turno_ou_escala_nome or "—" }}</td>
-            <td>
+            <td class="d-none d-md-table-cell">{{ f.turno_ou_escala_nome or "—" }}</td>
+            <td class="d-none d-md-table-cell">
               {% if f.ultimo_timestamp %}
                 {{ f.ultimo_timestamp[8:10] }}/{{ f.ultimo_timestamp[5:7] }} às {{ f.ultimo_timestamp[11:16] }}
               {% else %}

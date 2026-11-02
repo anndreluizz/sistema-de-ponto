@@ -23,7 +23,7 @@
       <form class="login-caixa" method="post" novalidate>
         {{ csrf_input() }}
         <h1 class="h4 fw-bold mb-1">Bem-vindo(a) de volta</h1>
-        <p class="text-secondary mb-4">Entre com sua conta de administrador.</p>
+        <p class="text-secondary mb-4">Entre com seu usuário e senha.</p>
 
         {% with mensagens = get_flashed_messages(with_categories=true) %}
           {% if mensagens %}
@@ -50,9 +50,9 @@
             <span class="input-group-text"><i class="bi bi-lock"></i></span>
             <input type="password" class="form-control" id="senha" name="senha"
                    autocomplete="current-password" required>
-            <span class="input-group-text" id="alternar-senha" title="Mostrar/ocultar senha">
-              <i class="bi bi-eye" id="icone-alternar-senha"></i>
-            </span>
+            <button type="button" class="input-group-text" id="alternar-senha" aria-label="Mostrar senha" aria-pressed="false">
+              <i class="bi bi-eye" id="icone-alternar-senha" aria-hidden="true"></i>
+            </button>
           </div>
         </div>
 
@@ -123,6 +123,8 @@
         var mostrando = campoSenha.type === "text";
         campoSenha.type = mostrando ? "password" : "text";
         iconeAlternarSenha.className = mostrando ? "bi bi-eye" : "bi bi-eye-slash";
+        botaoAlternarSenha.setAttribute("aria-pressed", String(!mostrando));
+        botaoAlternarSenha.setAttribute("aria-label", mostrando ? "Mostrar senha" : "Ocultar senha");
       });
     })();
   </script>

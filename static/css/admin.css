@@ -24,6 +24,7 @@ body {
 }
 
 a { text-decoration: none; }
+.card-body p a, .form-text a, .alert a, td a:not(.btn) { text-decoration: underline; }
 
 /* ---------- Menu no topo ---------- */
 .menu-topo {
@@ -212,6 +213,10 @@ a { text-decoration: none; }
 .horario-painel-direita { left: auto; right: 0; }
 /* A tabela não pode cortar o painel do horário (no celular ela ainda rola de lado) */
 @media (min-width: 768px) { .card-aba .table-responsive { overflow: visible; } }
+/* No celular a tabela rola de lado e cortaria o painel: ele abre preso ao rodapé da tela */
+@media (max-width: 767.98px) {
+  .horario-painel, .horario-painel-direita { position: fixed; top: auto; bottom: 16px; left: 16px; right: 16px; width: auto; z-index: 1050; }
+}
 
 .mais-informacoes > summary { cursor: pointer; font-weight: 600; color: var(--bs-primary); }
 .foto-escolher { cursor: pointer; }

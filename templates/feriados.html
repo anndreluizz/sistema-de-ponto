@@ -54,8 +54,8 @@
                       <form method="post" action="{{ url_for('editar_feriado', feriado_id=f.id) }}"
                             class="d-flex flex-column gap-2 mt-2 p-2 border rounded bg-light text-start">
                         {{ csrf_input() }}
-                        <input type="date" name="data" value="{{ f.data }}" class="form-control form-control-sm">
-                        <input type="text" name="nome" value="{{ f.nome }}" class="form-control form-control-sm" placeholder="Nome">
+                        <label class="small text-secondary flex-fill mb-0">Data<input type="date" name="data" value="{{ f.data }}" class="form-control form-control-sm"></label>
+                        <label class="small text-secondary flex-fill mb-0">Nome<input type="text" name="nome" value="{{ f.nome }}" class="form-control form-control-sm" placeholder="Nome"></label>
                         <button type="submit" class="btn btn-sm btn-primary">Salvar</button>
                       </form>
                     </details>

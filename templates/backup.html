@@ -59,12 +59,11 @@
             Isso <strong>substitui todos os dados atuais</strong> pelos dados do arquivo enviado.
             Uma cópia de segurança do estado atual é feita automaticamente antes de substituir, mas use com cuidado.
           </p>
-          <form method="post" action="{{ url_for('backup_restaurar') }}" enctype="multipart/form-data"
-                onsubmit="return confirm('Tem certeza? Isso vai substituir todos os dados atuais.');">
+          <form method="post" action="{{ url_for('backup_restaurar') }}" enctype="multipart/form-data">
             {{ csrf_input() }}
             <div class="mb-3">
-              <label class="form-label">Arquivo de backup (.zip)</label>
-              <input type="file" name="arquivo" class="form-control" accept=".zip" required>
+              <label class="form-label" for="campo-arquivo-backup">Arquivo de backup (.zip)</label>
+              <input id="campo-arquivo-backup" type="file" name="arquivo" class="form-control" accept=".zip" required>
             </div>
             <div class="mb-3">
               <label class="form-label" for="campo-senha-backup">Senha do backup <span class="text-secondary small">(só se ele tiver senha)</span></label>

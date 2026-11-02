@@ -18,6 +18,7 @@
 
   var LARGURA_PROCESSAMENTO = 480;
   var DURACAO_FEEDBACK_MS = 3000;
+  var DURACAO_ERRO_MS = 6000; // dá tempo de ler o motivo
   // Precisa ser maior que COOLDOWN_SEGUNDOS do servidor (8s), senão quem segura o crachá
   // na frente da câmera depois de bater o ponto recebe uma tela vermelha de "erro".
   var RESFRIAMENTO_MESMO_CODIGO_MS = 10000;
@@ -77,7 +78,7 @@
     setTimeout(function () {
       telaFeedback.classList.add("oculto");
       ocupado = false;
-    }, DURACAO_FEEDBACK_MS);
+    }, sucesso ? DURACAO_FEEDBACK_MS : DURACAO_ERRO_MS);
   }
 
   var canvasFoto = document.createElement("canvas");
