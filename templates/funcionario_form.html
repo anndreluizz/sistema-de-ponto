@@ -7,29 +7,39 @@
   <form method="post" enctype="multipart/form-data" class="card">
     {{ csrf_input() }}
     <div class="card-body p-4">
-      <h1 class="h4 fw-bold mb-4">{{ "Editar funcionário" if funcionario else "Novo funcionário" }}</h1>
-
       <div class="d-flex align-items-center gap-3 mb-4">
-        <img id="preview-foto" class="preview-foto"
-             src="{{ url_for('arquivo_privado', pasta='fotos', nome=funcionario.foto.split('/')[-1]) if funcionario and funcionario.foto else foto_padrao }}"
-             alt="Foto do funcionário">
+        <label for="input-foto" class="foto-escolher" title="Trocar foto">
+          <img id="preview-foto" class="preview-foto"
+               src="{{ url_for('arquivo_privado', pasta='fotos', nome=funcionario.foto.split('/')[-1]) if funcionario and funcionario.foto else foto_padrao }}"
+               alt="Foto do funcionário">
+        </label>
         <div>
-          <label class="form-label mb-1 d-block">Foto do funcionário</label>
-          <input type="file" name="foto" id="input-foto" class="form-control form-control-sm" accept=".png,.jpg,.jpeg,.webp">
+          <h1 class="h4 fw-bold mb-1">{{ "Editar funcionário" if funcionario else "Novo funcionário" }}</h1>
+          <input type="file" name="foto" id="input-foto" class="form-control form-control-sm" accept=".png,.jpg,.jpeg,.webp" aria-label="Foto">
         </div>
       </div>
 
       <div class="row g-3">
-        <div class="col-md-4">
+        <div class="col-md-6">
           <label class="form-label">Nome completo *</label>
-          <input type="text" name="nome" class="form-control" required value="{{ funcionario.nome if funcionario else '' }}">
+          <input type="text" name="nome" class="form-control" required value="{{ (funcionario.nome if funcionario else '') or '' }}">
         </div>
-        <div class="col-md-4">
+        <div class="col-md-6">
           <label class="form-label">Cargo</label>
-          <input type="text" name="cargo" class="form-control" value="{{ funcionario.cargo if funcionario else '' }}">
+          <input type="text" name="cargo" class="form-control" placeholder="Ex: Professora de Matemática" value="{{ (funcionario.cargo if funcionario else '') or '' }}">
+        </div>
+
+        <div class="col-md-4">
+          <label class="form-label">Setor</label>
+          <select name="setor_id" class="form-select">
+            <option value="">Nenhum</option>
+            {% for s in setores %}
+              <option value="{{ s.id }}" {{ "selected" if funcionario and funcionario.setor_id == s.id else "" }}>{{ s.nome }}</option>
+            {% endfor %}
+          </select>
         </div>
         <div class="col-md-4">
-          <label class="form-label">Categoria</label>
+          <label class="form-label">Categoria <span class="text-secondary small">(ordem na folha)</span></label>
           {% set categoria_atual = funcionario.categoria if funcionario else "" %}
           <select name="categoria" class="form-select">
             <option value="" {{ "selected" if not categoria_atual else "" }}>Não informado</option>
@@ -38,20 +48,17 @@
             <option value="professor" {{ "selected" if categoria_atual == "professor" else "" }}>Professores</option>
             <option value="outro" {{ "selected" if categoria_atual == "outro" else "" }}>Outros funcionários</option>
           </select>
-          <div class="form-text mt-0">Define a ordem da Folha de Ponto (Gestão, Apoio Pedagógico, Professores — Efetivo antes de Contratado —, Outros).</div>
         </div>
-
-        <div class="col-md-3">
-          <label class="form-label">CPF</label>
-          <input type="text" name="cpf" class="form-control" placeholder="000.000.000-00"
-                 value="{{ funcionario.cpf if funcionario else '' }}">
+        <div class="col-6 col-md-2">
+          <label class="form-label">Vínculo</label>
+          {% set vinculo_atual = funcionario.vinculo if funcionario else "" %}
+          <select name="vinculo" class="form-select">
+            <option value="" {{ "selected" if not vinculo_atual else "" }}>—</option>
+            <option value="efetivo" {{ "selected" if vinculo_atual == "efetivo" else "" }}>Efetivo</option>
+            <option value="contratado" {{ "selected" if vinculo_atual == "contratado" else "" }}>Contratado</option>
+          </select>
         </div>
-        <div class="col-md-3">
-          <label class="form-label">Matrícula</label>
-          <input type="text" name="matricula" class="form-control"
-                 value="{{ funcionario.matricula if funcionario else matricula_sugerida }}">
-        </div>
-        <div class="col-md-3">
+        <div class="col-6 col-md-2">
           <label class="form-label">Situação</label>
           {% set situacao_atual = funcionario.situacao if funcionario else "ativo" %}
           <select name="situacao" class="form-select">
@@ -61,46 +68,9 @@
             <option value="afastado" {{ "selected" if situacao_atual == "afastado" else "" }}>Afastado</option>
           </select>
         </div>
-        <div class="col-md-3">
-          <label class="form-label">Vínculo</label>
-          {% set vinculo_atual = funcionario.vinculo if funcionario else "" %}
-          <select name="vinculo" class="form-select">
-            <option value="" {{ "selected" if not vinculo_atual else "" }}>Não informado</option>
-            <option value="efetivo" {{ "selected" if vinculo_atual == "efetivo" else "" }}>Efetivo</option>
-            <option value="contratado" {{ "selected" if vinculo_atual == "contratado" else "" }}>Contratado</option>
-          </select>
-        </div>
 
-        <div class="col-md-6">
-          <label class="form-label">RG</label>
-          <input type="text" name="rg" class="form-control" value="{{ funcionario.rg if funcionario else '' }}">
-        </div>
-        {% if session.usuario_perfil == 'administrador' %}
-          <div class="col-md-6">
-            <label class="form-label">Salário</label>
-            <input type="text" name="salario" class="form-control" placeholder="R$ 0,00"
-                   value="{{ funcionario.salario if funcionario else '' }}">
-            <div class="form-text mt-0">Visível só para Administrador.</div>
-          </div>
-        {% endif %}
-
-        <div class="col-md-6">
-          <label class="form-label d-flex justify-content-between">
-            <span>Setor</span>
-            <a href="{{ url_for('setores') }}" class="small">Gerenciar setores</a>
-          </label>
-          <select name="setor_id" class="form-select">
-            <option value="">Nenhum</option>
-            {% for s in setores %}
-              <option value="{{ s.id }}" {{ "selected" if funcionario and funcionario.setor_id == s.id else "" }}>{{ s.nome }}</option>
-            {% endfor %}
-          </select>
-        </div>
         <div class="col-12">
-          <label class="form-label d-flex justify-content-between">
-            <span>Agenda de trabalho</span>
-            <a href="{{ url_for('turnos') }}" class="small">Gerenciar turnos</a>
-          </label>
+          <label class="form-label">Horário de trabalho</label>
           {% set modo_atual = 'escala' if funcionario and funcionario.escala_id else ('turno' if funcionario and funcionario.turno_id else 'nenhum') %}
           <div class="btn-group w-100 mb-2" role="group">
             <input type="radio" class="btn-check" name="modo_agenda" id="modo-nenhum" value="nenhum" autocomplete="off"
@@ -136,7 +106,7 @@
             </div>
             <div class="col-md-4">
               <input type="date" name="escala_data_referencia" class="form-control"
-                     value="{{ funcionario.escala_data_referencia if funcionario else '' }}">
+                     value="{{ (funcionario.escala_data_referencia if funcionario else '') or '' }}">
             </div>
             <div class="col-12 form-text mt-0">
               A data de referência é um dia em que essa pessoa trabalha — define a fase do rodízio dela dentro do ciclo da escala.
@@ -146,34 +116,51 @@
             {% endif %}
           </div>
         </div>
-
-        <div class="col-md-6">
-          <label class="form-label">Telefone</label>
-          <input type="text" name="telefone" class="form-control" value="{{ funcionario.telefone if funcionario else '' }}">
-        </div>
-        <div class="col-md-6">
-          <label class="form-label">E-mail</label>
-          <input type="email" name="email" class="form-control" value="{{ funcionario.email if funcionario else '' }}">
-        </div>
-
-        <div class="col-md-6">
-          <label class="form-label">Data de admissão</label>
-          <input type="date" name="data_admissao" class="form-control" value="{{ funcionario.data_admissao if funcionario else '' }}">
-        </div>
-        <div class="col-md-6">
-          <label class="form-label d-flex justify-content-between">
-            <span>Banco de horas ativo a partir de</span>
-          </label>
-          <input type="date" name="banco_horas_inicio" class="form-control"
-                 value="{{ funcionario.banco_horas_inicio if funcionario else '' }}">
-          <div class="form-text mt-0">Deixe em branco para não acumular banco de horas para essa pessoa.</div>
-        </div>
-
-        <div class="col-12">
-          <label class="form-label">Observações</label>
-          <textarea name="observacoes" class="form-control" rows="3">{{ funcionario.observacoes if funcionario else '' }}</textarea>
-        </div>
       </div>
+
+      <details class="mais-informacoes mt-4" {{ "open" if funcionario and (funcionario.cpf or funcionario.telefone or funcionario.observacoes) else "" }}>
+        <summary>Mais informações <span class="text-secondary small">(documentos, contato, datas)</span></summary>
+        <div class="row g-3 mt-1">
+          <div class="col-md-4">
+            <label class="form-label">CPF</label>
+            <input type="text" name="cpf" class="form-control" placeholder="000.000.000-00" value="{{ (funcionario.cpf if funcionario else '') or '' }}">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">RG</label>
+            <input type="text" name="rg" class="form-control" value="{{ (funcionario.rg if funcionario else '') or '' }}">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Matrícula</label>
+            <input type="text" name="matricula" class="form-control" value="{{ (funcionario.matricula or '') if funcionario else matricula_sugerida }}">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Telefone</label>
+            <input type="text" name="telefone" class="form-control" value="{{ (funcionario.telefone if funcionario else '') or '' }}">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">E-mail</label>
+            <input type="email" name="email" class="form-control" value="{{ (funcionario.email if funcionario else '') or '' }}">
+          </div>
+          {% if session.usuario_perfil == 'administrador' %}
+            <div class="col-md-4">
+              <label class="form-label">Salário <span class="text-secondary small">(só Administrador vê)</span></label>
+              <input type="text" name="salario" class="form-control" placeholder="R$ 0,00" value="{{ (funcionario.salario if funcionario else '') or '' }}">
+            </div>
+          {% endif %}
+          <div class="col-md-4">
+            <label class="form-label">Data de admissão</label>
+            <input type="date" name="data_admissao" class="form-control" value="{{ (funcionario.data_admissao if funcionario else '') or '' }}">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Banco de horas a partir de <span class="text-secondary small">(vazio = não usa)</span></label>
+            <input type="date" name="banco_horas_inicio" class="form-control" value="{{ (funcionario.banco_horas_inicio if funcionario else '') or '' }}">
+          </div>
+          <div class="col-12">
+            <label class="form-label">Observações</label>
+            <textarea name="observacoes" class="form-control" rows="2">{{ (funcionario.observacoes if funcionario else '') or '' }}</textarea>
+          </div>
+        </div>
+      </details>
 
       <div class="d-flex gap-2 mt-4">
         <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Salvar</button>

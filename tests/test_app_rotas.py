@@ -440,3 +440,18 @@ def test_batida_sem_foto_ou_foto_invalida_registra_igual(cliente):
     registro_id = conexao.execute("SELECT id FROM registros").fetchone()["id"]
     conexao.close()
     assert cliente.get(f"/admin/registros/{registro_id}/foto").status_code == 404
+
+
+def test_editar_funcionario_sem_email_nao_mostra_none(cliente):
+    # Campo vazio aparecia como "None"; no e-mail isso fazia o navegador barrar o envio.
+    _criar_usuario("admin_teste", "SenhaForte123!", "administrador")
+    _login(cliente, "admin_teste", "SenhaForte123!")
+    conexao = db_module.get_db()
+    funcionario_id = conexao.execute(
+        "INSERT INTO funcionarios (nome, codigo, situacao) VALUES ('Sem Contato', 'ZZZ999', 'ativo')"
+    ).lastrowid
+    conexao.commit()
+    conexao.close()
+    html = cliente.get(f"/admin/funcionarios/{funcionario_id}/editar").get_data(as_text=True)
+    assert 'value="None"' not in html
+    assert ">None</textarea>" not in html

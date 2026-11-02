@@ -219,3 +219,6 @@ a { text-decoration: none; }
 .horario-painel-direita { left: auto; right: 0; }
 /* A tabela não pode cortar o painel do horário (no celular ela ainda rola de lado) */
 @media (min-width: 768px) { .card-aba .table-responsive { overflow: visible; } }
+
+.mais-informacoes > summary { cursor: pointer; font-weight: 600; color: var(--bs-primary); }
+.foto-escolher { cursor: pointer; }

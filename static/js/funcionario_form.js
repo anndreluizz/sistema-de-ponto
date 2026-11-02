@@ -21,3 +21,9 @@
 
   atualizar();
 })();
+
+// Campo inválido dentro de "Mais informações" fechado: abre a seção para o aviso aparecer.
+document.addEventListener("invalid", function (evento) {
+  var secao = evento.target.closest && evento.target.closest("details");
+  if (secao) secao.open = true;
+}, true);
