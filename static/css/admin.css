@@ -6,7 +6,7 @@
   --bs-danger: #DC2626;
   --bs-danger-rgb: 220, 38, 38;
   --bs-body-bg: #F4F6F8;
-  --bs-border-radius: 1rem;
+  --bs-border-radius: var(--bs-border-radius);
   --bs-border-radius-lg: 1rem;
   --bs-border-radius-sm: 0.6rem;
   --bs-font-sans-serif: "Inter", -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
@@ -61,7 +61,7 @@ a { text-decoration: none; }
   border-bottom-color: var(--bs-primary);
   font-weight: 600;
 }
-.menu-links .dropdown-menu { border-radius: 0.6rem; margin-top: 0; }
+.menu-links .dropdown-menu { border-radius: var(--bs-border-radius-sm); margin-top: 0; }
 .menu-links .dropdown-item.active { background: var(--azul-claro); color: var(--bs-primary); }
 
 .menu-ferramentas { display: flex; align-items: center; gap: 14px; margin-left: auto; }
@@ -92,10 +92,10 @@ a { text-decoration: none; }
 }
 
 /* ---------- Cards ---------- */
-.card { border: none; border-radius: 1rem; box-shadow: var(--sombra-suave); transition: box-shadow 0.2s ease, transform 0.2s ease; }
+.card { border: none; border-radius: var(--bs-border-radius); box-shadow: var(--sombra-suave); transition: box-shadow 0.2s ease, transform 0.2s ease; }
 
 .icone-setor {
-  width: 32px; height: 32px; border-radius: 0.6rem; flex-shrink: 0;
+  width: 32px; height: 32px; border-radius: var(--bs-border-radius-sm); flex-shrink: 0;
   display: flex; align-items: center; justify-content: center; font-size: 1rem;
 }
 
@@ -110,7 +110,7 @@ a { text-decoration: none; }
 /* ---------- Painel (Hoje) ---------- */
 .painel-numeros { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
 .painel-numero {
-  background: #fff; border-radius: 0.8rem; box-shadow: var(--sombra-suave);
+  background: #fff; border-radius: var(--bs-border-radius-sm); box-shadow: var(--sombra-suave);
   padding: 18px 20px; display: flex; flex-direction: column; gap: 4px;
 }
 .painel-valor { font-size: 2.2rem; font-weight: 700; line-height: 1; color: #1f2933; }
@@ -166,7 +166,7 @@ a { text-decoration: none; }
 /* ---------- Crachá ---------- */
 .cracha-pagina { min-height: 100vh; display: flex; flex-direction: column; align-items: center; gap: 24px; padding: 48px; background: var(--cinza-claro); }
 .cracha-cartao {
-  width: 360px; border-radius: 1.2rem; overflow: hidden; background: #fff;
+  width: 360px; border-radius: var(--bs-border-radius); overflow: hidden; background: #fff;
   box-shadow: var(--sombra-media); border: 1px solid #e5e9ee;
 }
 .cracha-topo {
@@ -198,7 +198,7 @@ a { text-decoration: none; }
 .card-aba { border-top-left-radius: 0; }
 .horario { position: relative; display: inline-block; }
 .horario > summary {
-  list-style: none; cursor: pointer; padding: 2px 8px; border-radius: 0.5rem;
+  list-style: none; cursor: pointer; padding: 2px 8px; border-radius: var(--bs-border-radius-sm);
   background: var(--azul-claro); color: var(--bs-primary); font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
@@ -207,7 +207,7 @@ a { text-decoration: none; }
 .horario[open] > summary { outline: 2px solid var(--bs-primary); }
 .horario-painel {
   position: absolute; z-index: 30; top: calc(100% + 6px); left: 0; width: 260px;
-  background: #fff; border: 1px solid #e5e9ee; border-radius: 0.7rem;
+  background: #fff; border: 1px solid #e5e9ee; border-radius: var(--bs-border-radius-sm);
   box-shadow: var(--sombra-media); padding: 12px;
 }
 .horario-painel-direita { left: auto; right: 0; }

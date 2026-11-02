@@ -79,7 +79,7 @@
               </span>
             {% endif %}
           </button>
-          <ul class="dropdown-menu dropdown-menu-end" style="min-width: 320px;">
+          <ul class="dropdown-menu dropdown-menu-end" style="min-width: min(320px, calc(100vw - 32px));">
             {% for aviso in notificacoes %}
               <li>
                 <a class="dropdown-item d-flex align-items-start gap-2 py-2" href="{{ aviso.link }}">
