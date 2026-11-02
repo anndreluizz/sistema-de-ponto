@@ -36,7 +36,12 @@
     if (!selectFuncionario || !selectTipo) return;
 
     document.querySelectorAll(".btn-duplicar-registro").forEach(function (botao) {
-      botao.addEventListener("click", function () {
+      botao.addEventListener("click", function (evento) {
+        evento.preventDefault();
+        var painel = document.getElementById("form-batida");
+        if (painel) bootstrap.Collapse.getOrCreateInstance(painel).show();
+        var aberto = botao.closest("details");
+        if (aberto) aberto.removeAttribute("open");
         selectFuncionario.value = botao.dataset.funcionarioId;
         selectTipo.value = botao.dataset.tipo;
         if (campoTimestamp) {

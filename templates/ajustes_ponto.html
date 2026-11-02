@@ -1,291 +1,247 @@
 {% extends "base.html" %}
 {% from "_macros.html" import csrf_input %}
-{% block titulo %}Ajustes de Ponto{% endblock %}
+{% block titulo %}Ajustes de ponto{% endblock %}
+
+{# Um horário clicável: abre editar / excluir / foto / usar como modelo #}
+{% macro horario(registro, tipo, funcionario_id) %}
+  <details class="horario">
+    <summary class="{{ 'horario-manual' if registro.manual else '' }}"
+             title="{{ ('Lançado à mão: ' ~ (registro.motivo or 'sem motivo')) if registro.manual else 'Clique para ajustar' }}">
+      {{ registro.timestamp[11:16] }}
+    </summary>
+    <div class="horario-painel">
+      <form method="post" action="{{ url_for('editar_registro', registro_id=registro.id) }}" class="d-flex flex-column gap-2">
+        {{ csrf_input() }}
+        <input type="hidden" name="tipo" value="{{ tipo }}">
+        <input type="datetime-local" name="timestamp" class="form-control form-control-sm"
+               value="{{ registro.timestamp[:16] | replace(' ', 'T') }}" aria-label="Novo horário">
+        <input type="text" name="motivo" class="form-control form-control-sm" placeholder="Motivo do ajuste"
+               value="{{ registro.motivo or '' }}" required>
+        <button type="submit" class="btn btn-sm btn-primary">Salvar</button>
+      </form>
+      <div class="d-flex flex-wrap gap-3 mt-2 small">
+        {% if tem_foto_batida(registro) %}
+          <a href="{{ url_for('foto_batida', registro_id=registro.id) }}" target="_blank">ver foto</a>
+        {% endif %}
+        <a href="#" class="btn-duplicar-registro" data-funcionario-id="{{ funcionario_id }}" data-tipo="{{ tipo }}">usar como modelo</a>
+        <form method="post" action="{{ url_for('excluir_registro', registro_id=registro.id) }}"
+              class="form-confirmar d-inline ms-auto" data-confirmar="Excluir esta {{ tipo }}?">
+          {{ csrf_input() }}
+          <button type="submit" class="btn btn-link btn-sm p-0 text-danger">excluir</button>
+        </form>
+      </div>
+    </div>
+  </details>
+{% endmacro %}
+
 {% block conteudo %}
-  <h1 class="h3 fw-bold mb-4">Ajustes de Ponto</h1>
+  <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+    <h1 class="h3 fw-bold mb-0 me-auto">Ajustes de ponto</h1>
+    <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#form-batida">+ Lançar batida esquecida</button>
+    <button class="btn btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#form-justificativa">+ Justificar falta</button>
+  </div>
 
-  <form method="get" class="card mb-4 sem-impressao">
-    <div class="card-body">
-      <div class="row g-2 align-items-end">
-        <div class="col-md-4">
-          <label for="funcionario_id" class="form-label">Funcionário</label>
-          <select id="funcionario_id" name="funcionario_id" class="form-select">
-            <option value="">Todos</option>
-            {% for f in funcionarios %}
-              <option value="{{ f.id }}" {{ "selected" if funcionario_id == f.id|string else "" }}>{{ f.nome }}</option>
-            {% endfor %}
-          </select>
+  <div class="collapse" id="form-batida">
+    <form method="post" action="{{ url_for('novo_registro_manual') }}" class="card mb-3 sem-impressao">
+      {{ csrf_input() }}
+      <div class="card-body">
+        <h2 class="h6 fw-bold mb-3">Lançar batida esquecida</h2>
+        <div class="row g-2 align-items-end">
+          <div class="col-md-4">
+            <label for="novo_funcionario_id" class="form-label small mb-1">Funcionário</label>
+            <select id="novo_funcionario_id" name="funcionario_id" class="form-select" required>
+              <option value="" disabled selected>Selecione</option>
+              {% for f in funcionarios %}<option value="{{ f.id }}">{{ f.nome }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="col-6 col-md-2">
+            <label for="novo_tipo" class="form-label small mb-1">Tipo</label>
+            <select id="novo_tipo" name="tipo" class="form-select" required>
+              <option value="entrada">Entrada</option>
+              <option value="saida">Saída</option>
+            </select>
+          </div>
+          <div class="col-6 col-md-3">
+            <label for="novo_timestamp" class="form-label small mb-1">Data e hora</label>
+            <input type="datetime-local" id="novo_timestamp" name="timestamp" class="form-control" required>
+          </div>
+          <div class="col-md-3">
+            <label for="novo_motivo" class="form-label small mb-1">Motivo</label>
+            <input type="text" id="novo_motivo" name="motivo" class="form-control" placeholder="Ex: esqueceu de bater" required>
+          </div>
         </div>
-        <div class="col-md-3">
-          <label for="data_inicio" class="form-label">De</label>
-          <input type="date" id="data_inicio" name="data_inicio" class="form-control" value="{{ data_inicio }}">
-        </div>
-        <div class="col-md-3">
-          <label for="data_fim" class="form-label">Até</label>
-          <input type="date" id="data_fim" name="data_fim" class="form-control" value="{{ data_fim }}">
-        </div>
-        <div class="col-md-2 d-flex gap-2">
-          <button type="submit" class="btn btn-primary flex-fill"><i class="bi bi-funnel me-1"></i>Filtrar</button>
-        </div>
+        <button type="submit" class="btn btn-primary mt-3">Lançar</button>
       </div>
-      <a class="btn btn-outline-secondary btn-sm mt-3"
-         href="{{ url_for('exportar_csv', funcionario_id=funcionario_id, data_inicio=data_inicio, data_fim=data_fim) }}">
-        <i class="bi bi-download me-1"></i>Exportar CSV
-      </a>
+    </form>
+  </div>
+
+  <div class="collapse" id="form-justificativa">
+    <form method="post" action="{{ url_for('nova_ausencia') }}" class="card mb-3 sem-impressao">
+      {{ csrf_input() }}
+      <div class="card-body">
+        <h2 class="h6 fw-bold mb-1">Justificar falta</h2>
+        <p class="text-secondary small mb-3">O dia justificado deixa de contar como falta.</p>
+        <div class="row g-2 align-items-end">
+          <div class="col-md-4">
+            <label class="form-label small mb-1">Funcionário</label>
+            <select name="funcionario_id" class="form-select" required>
+              <option value="" disabled selected>Selecione</option>
+              {% for f in funcionarios %}<option value="{{ f.id }}">{{ f.nome }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="col-6 col-md-2">
+            <label class="form-label small mb-1">Data</label>
+            <input type="date" name="data" class="form-control" required>
+          </div>
+          <div class="col-6 col-md-3">
+            <label class="form-label small mb-1">Motivo</label>
+            <select name="tipo" class="form-select" required>
+              <option value="atestado">Atestado</option>
+              <option value="licenca">Licença</option>
+              <option value="ferias">Férias</option>
+              <option value="folga">Folga</option>
+              <option value="licenca_maternidade_paternidade">Licença maternidade/paternidade</option>
+              <option value="falecimento">Falecimento na família (nojo)</option>
+              <option value="abono_legal">Doação de sangue / serviço eleitoral</option>
+              <option value="outro">Outro</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small mb-1">Observação</label>
+            <input type="text" name="observacao" class="form-control" placeholder="Opcional">
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary mt-3">Justificar</button>
+      </div>
+    </form>
+  </div>
+
+  <form method="get" class="d-flex flex-wrap align-items-end gap-2 mb-3 sem-impressao">
+    <div>
+      <label for="funcionario_id" class="form-label small mb-1">Funcionário</label>
+      <select id="funcionario_id" name="funcionario_id" class="form-select" style="min-width: 220px;">
+        <option value="">Todos</option>
+        {% for f in funcionarios %}
+          <option value="{{ f.id }}" {{ "selected" if funcionario_id == f.id|string else "" }}>{{ f.nome }}</option>
+        {% endfor %}
+      </select>
     </div>
+    <div>
+      <label for="data_inicio" class="form-label small mb-1">De</label>
+      <input type="date" id="data_inicio" name="data_inicio" class="form-control" value="{{ data_inicio }}">
+    </div>
+    <div>
+      <label for="data_fim" class="form-label small mb-1">Até</label>
+      <input type="date" id="data_fim" name="data_fim" class="form-control" value="{{ data_fim }}">
+    </div>
+    <button type="submit" class="btn btn-outline-primary">Ver</button>
+    <a class="small ms-auto" href="{{ url_for('exportar_csv', funcionario_id=funcionario_id, data_inicio=data_inicio, data_fim=data_fim) }}">baixar CSV</a>
   </form>
 
-  {% for dia in dias %}
-    <div class="card mb-3">
-      <div class="card-header bg-white d-flex flex-wrap gap-2 justify-content-between align-items-center">
-        <strong>{{ dia.funcionario_nome }}</strong>
-        <span class="text-secondary">{{ dia.data.strftime('%d/%m/%Y') }}</span>
-        <span class="badge text-bg-primary rounded-pill">Total no dia: {{ dia.total_horas }}</span>
-      </div>
-      <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0">
-          <thead>
-            <tr><th>Entrada</th><th>Saída</th><th class="sem-impressao">Editar</th><th class="sem-impressao">Excluir</th></tr>
-          </thead>
-          <tbody>
-            {% for par in dia.pares %}
-              <tr>
-                <td>
-                  {% if par.entrada %}
-                    {{ par.entrada.timestamp[11:16] }}
-                    {% if tem_foto_batida(par.entrada) %}
-                      <a href="{{ url_for('foto_batida', registro_id=par.entrada.id) }}" target="_blank" class="ms-1 sem-impressao"
-                         title="Ver foto tirada pelo totem nesta batida" aria-label="Ver foto da batida"><i class="bi bi-camera"></i></a>
-                    {% endif %}
-                    {% if par.entrada.manual %}
-                      <span class="badge text-bg-secondary ms-1" data-bs-toggle="tooltip" title="{{ par.entrada.motivo or 'Sem motivo registrado' }}">manual</span>
-                    {% endif %}
-                  {% else %}—{% endif %}
-                </td>
-                <td>
-                  {% if par.saida %}
-                    {{ par.saida.timestamp[11:16] }}
-                    {% if tem_foto_batida(par.saida) %}
-                      <a href="{{ url_for('foto_batida', registro_id=par.saida.id) }}" target="_blank" class="ms-1 sem-impressao"
-                         title="Ver foto tirada pelo totem nesta batida" aria-label="Ver foto da batida"><i class="bi bi-camera"></i></a>
-                    {% endif %}
-                    {% if par.saida.manual %}
-                      <span class="badge text-bg-secondary ms-1" data-bs-toggle="tooltip" title="{{ par.saida.motivo or 'Sem motivo registrado' }}">manual</span>
-                    {% endif %}
-                  {% else %}
-                    <span class="badge text-bg-warning">em andamento</span>
-                  {% endif %}
-                </td>
-                <td class="sem-impressao">
-                  {% if par.entrada %}
-                    <details class="d-inline-block">
-                      <summary class="btn btn-sm btn-outline-secondary">editar entrada</summary>
-                      <form method="post" action="{{ url_for('editar_registro', registro_id=par.entrada.id) }}"
-                            class="d-flex flex-column gap-2 mt-2 p-2 border rounded bg-light">
-                        {{ csrf_input() }}
-                        <input type="hidden" name="tipo" value="entrada">
-                        <input type="datetime-local" name="timestamp" class="form-control form-control-sm"
-                               value="{{ par.entrada.timestamp[:16] | replace(' ', 'T') }}">
-                        <input type="text" name="motivo" class="form-control form-control-sm" placeholder="Motivo do ajuste"
-                               value="{{ par.entrada.motivo or '' }}" required>
-                        <button type="submit" class="btn btn-sm btn-primary">Salvar</button>
-                      </form>
-                    </details>
-                    <button type="button" class="btn btn-sm btn-outline-secondary btn-duplicar-registro"
-                            data-funcionario-id="{{ dia.funcionario_id }}" data-tipo="entrada" title="Duplicar como novo registro">
-                      <i class="bi bi-copy"></i>
-                    </button>
-                  {% endif %}
-                  {% if par.saida %}
-                    <details class="d-inline-block">
-                      <summary class="btn btn-sm btn-outline-secondary">editar saída</summary>
-                      <form method="post" action="{{ url_for('editar_registro', registro_id=par.saida.id) }}"
-                            class="d-flex flex-column gap-2 mt-2 p-2 border rounded bg-light">
-                        {{ csrf_input() }}
-                        <input type="hidden" name="tipo" value="saida">
-                        <input type="datetime-local" name="timestamp" class="form-control form-control-sm"
-                               value="{{ par.saida.timestamp[:16] | replace(' ', 'T') }}">
-                        <input type="text" name="motivo" class="form-control form-control-sm" placeholder="Motivo do ajuste"
-                               value="{{ par.saida.motivo or '' }}" required>
-                        <button type="submit" class="btn btn-sm btn-primary">Salvar</button>
-                      </form>
-                    </details>
-                    <button type="button" class="btn btn-sm btn-outline-secondary btn-duplicar-registro"
-                            data-funcionario-id="{{ dia.funcionario_id }}" data-tipo="saida" title="Duplicar como novo registro">
-                      <i class="bi bi-copy"></i>
-                    </button>
-                  {% endif %}
-                </td>
-                <td class="sem-impressao">
-                  {% if par.entrada %}
-                    <form method="post" action="{{ url_for('excluir_registro', registro_id=par.entrada.id) }}"
-                          class="form-confirmar d-inline" data-confirmar="Excluir esta entrada?">
-                      {{ csrf_input() }}
-                      <button type="submit" class="btn btn-sm btn-outline-danger">excluir entrada</button>
-                    </form>
-                  {% endif %}
-                  {% if par.saida %}
-                    <form method="post" action="{{ url_for('excluir_registro', registro_id=par.saida.id) }}"
-                          class="form-confirmar d-inline" data-confirmar="Excluir esta saída?">
-                      {{ csrf_input() }}
-                      <button type="submit" class="btn btn-sm btn-outline-danger">excluir saída</button>
-                    </form>
-                  {% endif %}
-                </td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  {% else %}
-    <p class="text-secondary">Nenhum registro encontrado para esse período.</p>
-  {% endfor %}
+  <ul class="nav nav-tabs mb-0" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#aba-batidas" type="button" role="tab">Batidas</button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#aba-justificativas" type="button" role="tab">
+        Justificativas{% if ausencias %} <span class="badge rounded-pill text-bg-light border">{{ ausencias|length }}</span>{% endif %}
+      </button>
+    </li>
+  </ul>
 
-  <h2 class="h5 fw-bold mt-4">Adicionar registro manual</h2>
-  <p class="text-secondary small">Use isso quando alguém esquecer de bater o ponto.</p>
-  <form method="post" action="{{ url_for('novo_registro_manual') }}" class="card sem-impressao">
-    {{ csrf_input() }}
-    <div class="card-body">
-      <div class="row g-2 align-items-end">
-        <div class="col-md-4">
-          <label for="novo_funcionario_id" class="form-label">Funcionário</label>
-          <select id="novo_funcionario_id" name="funcionario_id" class="form-select" required>
-            <option value="" disabled selected>Selecione</option>
-            {% for f in funcionarios %}
-              <option value="{{ f.id }}">{{ f.nome }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="col-md-3">
-          <label for="novo_tipo" class="form-label">Tipo</label>
-          <select id="novo_tipo" name="tipo" class="form-select" required>
-            <option value="entrada">Entrada</option>
-            <option value="saida">Saída</option>
-          </select>
-        </div>
-        <div class="col-md-3">
-          <label for="novo_timestamp" class="form-label">Data e hora</label>
-          <input type="datetime-local" id="novo_timestamp" name="timestamp" class="form-control" required>
-        </div>
-        <div class="col-md-2">
-          <button type="submit" class="btn btn-primary w-100"><i class="bi bi-plus-lg me-1"></i>Adicionar</button>
-        </div>
-        <div class="col-12">
-          <label for="novo_motivo" class="form-label">Motivo</label>
-          <input type="text" id="novo_motivo" name="motivo" class="form-control" placeholder="Ex: Esqueceu de bater o ponto" required>
-        </div>
-      </div>
-    </div>
-  </form>
-
-  <h2 class="h5 fw-bold mt-4">Justificativas (atestado, licença, férias, folga)</h2>
-  <p class="text-secondary small">Um dia justificado deixa de contar como falta nos relatórios e no dashboard.</p>
-
-  <form method="post" action="{{ url_for('nova_ausencia') }}" class="card mb-3 sem-impressao">
-    {{ csrf_input() }}
-    <div class="card-body">
-      <div class="row g-2 align-items-end">
-        <div class="col-md-3">
-          <label class="form-label">Funcionário</label>
-          <select name="funcionario_id" class="form-select" required>
-            <option value="" disabled selected>Selecione</option>
-            {% for f in funcionarios %}
-              <option value="{{ f.id }}">{{ f.nome }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="col-md-3">
-          <label class="form-label">Data</label>
-          <input type="date" name="data" class="form-control" required>
-        </div>
-        <div class="col-md-2">
-          <label class="form-label">Tipo</label>
-          <select name="tipo" class="form-select" required>
-            <option value="atestado">Atestado</option>
-            <option value="licenca">Licença</option>
-            <option value="ferias">Férias</option>
-            <option value="folga">Folga</option>
-            <option value="licenca_maternidade_paternidade">Licença maternidade/paternidade</option>
-            <option value="falecimento">Falecimento na família (nojo)</option>
-            <option value="abono_legal">Doação de sangue / serviço eleitoral</option>
-            <option value="outro">Outro</option>
-          </select>
-        </div>
-        <div class="col-md-3">
-          <label class="form-label">Observação</label>
-          <input type="text" name="observacao" class="form-control" placeholder="Opcional">
-        </div>
-        <div class="col-md-1">
-          <button type="submit" class="btn btn-primary w-100"><i class="bi bi-plus-lg"></i></button>
-        </div>
-      </div>
-    </div>
-  </form>
-
-  <div class="card">
-    <div class="table-responsive">
-      <table class="table table-hover align-middle mb-0">
-        <thead>
-          <tr><th>Funcionário</th><th>Data</th><th>Tipo</th><th>Observação</th><th class="sem-impressao">Atestado</th><th class="sem-impressao text-end">Ações</th></tr>
-        </thead>
-        <tbody>
-          {% for a in ausencias %}
-            <tr>
-              <td>{{ a.funcionario_nome }}</td>
-              <td>{{ a.data[8:10] }}/{{ a.data[5:7] }}/{{ a.data[0:4] }}</td>
-              <td><span class="badge text-bg-info">{{ nomes_tipo_ausencia.get(a.tipo, a.tipo) }}</span></td>
-              <td>{{ a.observacao or "—" }}</td>
-              <td class="sem-impressao">
-                {% for doc in documentos_por_ausencia.get(a.id, []) %}
-                  <div class="d-flex align-items-center gap-1 mb-1">
-                    <a href="{{ url_for('baixar_documento', documento_id=doc.id) }}" class="small">{{ doc.nome_arquivo }}</a>
-                    <form method="post" action="{{ url_for('excluir_documento', documento_id=doc.id) }}"
-                          class="form-confirmar d-inline" data-confirmar="Excluir este anexo?">
-                      {{ csrf_input() }}
-                      <button type="submit" class="btn btn-sm btn-link text-danger p-0" title="Excluir anexo">
-                        <i class="bi bi-x-circle"></i>
-                      </button>
-                    </form>
-                  </div>
-                {% endfor %}
-                <details class="d-inline-block">
-                  <summary class="btn btn-sm btn-outline-secondary">anexar</summary>
-                  <form method="post" action="{{ url_for('nova_documento_ausencia', ausencia_id=a.id) }}"
-                        enctype="multipart/form-data" class="d-flex gap-2 mt-2 p-2 border rounded bg-light">
-                    {{ csrf_input() }}
-                    <input type="file" name="arquivo" class="form-control form-control-sm" accept=".pdf,.png,.jpg,.jpeg,.webp" required>
-                    <button type="submit" class="btn btn-sm btn-primary">Enviar</button>
-                  </form>
-                </details>
-              </td>
-              <td class="sem-impressao text-end">
-                <details class="d-inline-block">
-                  <summary class="btn btn-sm btn-outline-secondary">editar</summary>
-                  <form method="post" action="{{ url_for('editar_ausencia', ausencia_id=a.id) }}"
-                        class="d-flex gap-2 mt-2 p-2 border rounded bg-light">
-                    {{ csrf_input() }}
-                    <select name="tipo" class="form-select form-select-sm">
-                      {% for chave, rotulo in nomes_tipo_ausencia.items() %}
-                        <option value="{{ chave }}" {{ "selected" if a.tipo == chave else "" }}>{{ rotulo }}</option>
+  <div class="tab-content">
+    <div class="tab-pane fade show active" id="aba-batidas" role="tabpanel">
+      <div class="card card-aba">
+        <div class="table-responsive">
+          <table class="table align-middle mb-0">
+            <thead><tr><th>Dia</th><th>Funcionário</th><th>Batidas <span class="fw-normal text-secondary small">(clique num horário para ajustar)</span></th><th class="text-end">Total</th></tr></thead>
+            <tbody>
+              {% for dia in dias %}
+                <tr>
+                  <td class="text-nowrap">{{ dia.data.strftime('%d/%m') }}</td>
+                  <td>{{ dia.funcionario_nome }}</td>
+                  <td>
+                    <div class="d-flex flex-wrap align-items-center gap-2">
+                      {% for par in dia.pares %}
+                        <span class="d-inline-flex align-items-center gap-1 batida-par">
+                          {% if par.entrada %}{{ horario(par.entrada, 'entrada', dia.funcionario_id) }}{% else %}<span class="text-secondary">—</span>{% endif %}
+                          <span class="text-secondary">→</span>
+                          {% if par.saida %}{{ horario(par.saida, 'saida', dia.funcionario_id) }}{% else %}<span class="badge text-bg-warning">em andamento</span>{% endif %}
+                        </span>
                       {% endfor %}
-                    </select>
-                    <input type="text" name="observacao" class="form-control form-control-sm" value="{{ a.observacao or '' }}">
-                    <button type="submit" class="btn btn-sm btn-primary">Salvar</button>
-                  </form>
-                </details>
-                <form method="post" action="{{ url_for('excluir_ausencia', ausencia_id=a.id) }}"
-                      class="form-confirmar d-inline" data-confirmar="Excluir esta justificativa?">
-                  {{ csrf_input() }}
-                  <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
-                </form>
-              </td>
-            </tr>
-          {% else %}
-            <tr><td colspan="6" class="text-secondary text-center py-3">Nenhuma justificativa nesse período.</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
+                    </div>
+                  </td>
+                  <td class="text-end text-nowrap">{{ dia.total_horas }}</td>
+                </tr>
+              {% else %}
+                <tr><td colspan="4" class="text-secondary text-center py-4">Nenhuma batida nesse período.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-pane fade" id="aba-justificativas" role="tabpanel">
+      <div class="card card-aba">
+        <div class="table-responsive">
+          <table class="table align-middle mb-0">
+            <thead><tr><th>Dia</th><th>Funcionário</th><th>Motivo</th><th>Observação</th><th class="sem-impressao text-end"></th></tr></thead>
+            <tbody>
+              {% for a in ausencias %}
+                <tr>
+                  <td class="text-nowrap">{{ a.data[8:10] }}/{{ a.data[5:7] }}</td>
+                  <td>{{ a.funcionario_nome }}</td>
+                  <td>
+                    {{ nomes_tipo_ausencia.get(a.tipo, a.tipo) }}
+                    {% for doc in documentos_por_ausencia.get(a.id, []) %}
+                      <a href="{{ url_for('baixar_documento', documento_id=doc.id) }}" class="ms-1" title="{{ doc.nome_arquivo }}"><i class="bi bi-paperclip"></i></a>
+                    {% endfor %}
+                  </td>
+                  <td class="text-secondary">{{ a.observacao or "" }}</td>
+                  <td class="sem-impressao text-end">
+                    <details class="horario d-inline-block text-start">
+                      <summary class="small">gerenciar</summary>
+                      <div class="horario-painel horario-painel-direita">
+                        <form method="post" action="{{ url_for('editar_ausencia', ausencia_id=a.id) }}" class="d-flex flex-column gap-2">
+                          {{ csrf_input() }}
+                          <select name="tipo" class="form-select form-select-sm" aria-label="Motivo">
+                            {% for chave, rotulo in nomes_tipo_ausencia.items() %}
+                              <option value="{{ chave }}" {{ "selected" if a.tipo == chave else "" }}>{{ rotulo }}</option>
+                            {% endfor %}
+                          </select>
+                          <input type="text" name="observacao" class="form-control form-control-sm" value="{{ a.observacao or '' }}" aria-label="Observação">
+                          <button type="submit" class="btn btn-sm btn-primary">Salvar</button>
+                        </form>
+                        <form method="post" action="{{ url_for('nova_documento_ausencia', ausencia_id=a.id) }}"
+                              enctype="multipart/form-data" class="d-flex gap-2 mt-2">
+                          {{ csrf_input() }}
+                          <input type="file" name="arquivo" class="form-control form-control-sm" accept=".pdf,.png,.jpg,.jpeg,.webp" required aria-label="Anexar atestado">
+                          <button type="submit" class="btn btn-sm btn-outline-primary">Anexar</button>
+                        </form>
+                        {% for doc in documentos_por_ausencia.get(a.id, []) %}
+                          <form method="post" action="{{ url_for('excluir_documento', documento_id=doc.id) }}"
+                                class="form-confirmar small mt-2" data-confirmar="Excluir este anexo?">
+                            {{ csrf_input() }}
+                            {{ doc.nome_arquivo }} <button type="submit" class="btn btn-link btn-sm p-0 text-danger">tirar anexo</button>
+                          </form>
+                        {% endfor %}
+                        <form method="post" action="{{ url_for('excluir_ausencia', ausencia_id=a.id) }}"
+                              class="form-confirmar mt-2" data-confirmar="Excluir esta justificativa?">
+                          {{ csrf_input() }}
+                          <button type="submit" class="btn btn-link btn-sm p-0 text-danger">excluir justificativa</button>
+                        </form>
+                      </div>
+                    </details>
+                  </td>
+                </tr>
+              {% else %}
+                <tr><td colspan="5" class="text-secondary text-center py-4">Nenhuma justificativa nesse período.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   </div>
 {% endblock %}

@@ -199,3 +199,23 @@ a { text-decoration: none; }
   .pagina-conteudo { padding: 0 !important; }
   .card { box-shadow: none !important; border: 1px solid #ddd !important; }
 }
+
+/* ---------- Ajustes de ponto ---------- */
+.card-aba { border-top-left-radius: 0; }
+.horario { position: relative; display: inline-block; }
+.horario > summary {
+  list-style: none; cursor: pointer; padding: 2px 8px; border-radius: 0.5rem;
+  background: var(--azul-claro); color: var(--bs-primary); font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.horario > summary::-webkit-details-marker { display: none; }
+.horario > summary.horario-manual { background: #fef3c7; color: #92400e; }
+.horario[open] > summary { outline: 2px solid var(--bs-primary); }
+.horario-painel {
+  position: absolute; z-index: 30; top: calc(100% + 6px); left: 0; width: 260px;
+  background: #fff; border: 1px solid #e5e9ee; border-radius: 0.7rem;
+  box-shadow: var(--sombra-media); padding: 12px;
+}
+.horario-painel-direita { left: auto; right: 0; }
+/* A tabela não pode cortar o painel do horário (no celular ela ainda rola de lado) */
+@media (min-width: 768px) { .card-aba .table-responsive { overflow: visible; } }
