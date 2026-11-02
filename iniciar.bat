@@ -48,6 +48,11 @@ if errorlevel 1 (
     venv\Scripts\python.exe -c "import pathlib; [p.unlink() for p in pathlib.Path('venv/Lib/site-packages/fontTools').rglob('*.pyd')]" 2>nul
 )
 
+REM Senha nos backups (opcional): instala o pyzipper se faltar. Se nao der, o sistema
+REM abre normalmente e so a senha dos backups fica indisponivel.
+venv\Scripts\python.exe -m pip show -q pyzipper >nul 2>nul
+if errorlevel 1 if exist wheels venv\Scripts\python.exe -m pip install -q --no-index --find-links wheels pyzipper -c constraints.txt >nul 2>nul
+
 venv\Scripts\python.exe -c "import flask, flask_wtf, waitress, PIL, fpdf, openpyxl, qrcode"
 if errorlevel 1 (
     echo.

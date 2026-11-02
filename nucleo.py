@@ -453,6 +453,55 @@ def montar_backup_zip_bytes():
         return buffer.getvalue()
 
 
+def senha_backup(conn):
+    linha = conn.execute("SELECT backup_senha FROM configuracoes WHERE id = 1").fetchone()
+    return (linha["backup_senha"] if linha else None) or None
+
+
+def criptografia_backup_disponivel():
+    """pyzipper é opcional: se o Windows bloquear a parte compilada dele, o sistema segue
+    funcionando e só a senha nos backups fica indisponível (ver iniciar.bat)."""
+    try:
+        import pyzipper  # noqa: F401
+    except Exception:
+        return False
+    return True
+
+
+def cifrar_zip(zip_bytes, senha):
+    """Mesmo conteúdo, com senha AES-256 (abre também no 7-Zip e no WinRAR)."""
+    import pyzipper
+
+    entrada = zipfile.ZipFile(io.BytesIO(zip_bytes))
+    saida = io.BytesIO()
+    with pyzipper.AESZipFile(saida, "w", compression=pyzipper.ZIP_DEFLATED, encryption=pyzipper.WZ_AES) as zf:
+        zf.setpassword(senha.encode("utf-8"))
+        for info in entrada.infolist():
+            zf.writestr(info.filename, entrada.read(info))
+    return saida.getvalue()
+
+
+def backup_tem_senha(caminho_zip):
+    with zipfile.ZipFile(caminho_zip) as zf:
+        return any(info.flag_bits & 0x1 for info in zf.infolist())
+
+
+def decifrar_zip(caminho_zip, senha, caminho_saida):
+    """Grava em caminho_saida o mesmo backup sem senha. Senha errada vira ValueError."""
+    try:
+        import pyzipper
+    except Exception:
+        raise ValueError("Este computador não consegue abrir backups com senha (falta o pyzipper).")
+    try:
+        with pyzipper.AESZipFile(caminho_zip) as entrada, zipfile.ZipFile(caminho_saida, "w", zipfile.ZIP_DEFLATED) as saida:
+            entrada.setpassword(senha.encode("utf-8"))
+            for info in entrada.infolist():
+                saida.writestr(info.filename, entrada.read(info))
+    except RuntimeError:
+        raise ValueError("Senha do backup incorreta.")
+    return caminho_saida
+
+
 def _datahora_backup_auto(caminho):
     """Extrai a data/hora do nome do arquivo — aceita o formato novo (auto-AAAAMMDD-HHMMSS.zip)
     e o formato antigo (auto-AAAA-MM-DD.zip, de antes da frequência configurável)."""
@@ -470,12 +519,13 @@ def verificar_backup_automatico():
     conn = db.get_db()
     try:
         config = conn.execute(
-            "SELECT backup_frequencia_horas, backup_pasta_destino FROM configuracoes WHERE id = 1"
+            "SELECT backup_frequencia_horas, backup_pasta_destino, backup_senha FROM configuracoes WHERE id = 1"
         ).fetchone()
     finally:
         conn.close()
     frequencia_horas = config["backup_frequencia_horas"] if config else 24
     pasta_destino = config["backup_pasta_destino"] if config else None
+    senha = config["backup_senha"] if config else None
 
     BACKUPS_AUTO_DIR.mkdir(parents=True, exist_ok=True)
     marcas = [d for d in (_datahora_backup_auto(a) for a in BACKUPS_AUTO_DIR.glob("auto-*.zip")) if d]
@@ -503,7 +553,12 @@ def verificar_backup_automatico():
                 pasta = Path(pasta_destino)
                 if not pasta.is_dir():
                     raise FileNotFoundError(f"pasta não encontrada: {pasta_destino}")
-                shutil.copy2(caminho, pasta / nome_arquivo)
+                if senha:
+                    # A cópia sai do computador (OneDrive, pendrive): vai com senha. Se não der para
+                    # cifrar, cai no except e NÃO copia sem senha.
+                    (pasta / nome_arquivo).write_bytes(cifrar_zip(dados, senha))
+                else:
+                    shutil.copy2(caminho, pasta / nome_arquivo)
             except Exception as erro:
                 registrar_auditoria(
                     conn_auditoria, "backup_automatico_falhou", "sistema",

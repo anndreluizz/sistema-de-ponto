@@ -17,6 +17,11 @@ import db
 
 import nucleo
 from nucleo import (
+    backup_tem_senha,
+    cifrar_zip,
+    criptografia_backup_disponivel,
+    decifrar_zip,
+    senha_backup,
     BASE_DIR,
     EXTENSOES_IMAGEM_PERMITIDAS,
     NOMES_PERFIL,
@@ -145,6 +150,21 @@ def configuracoes():
             else:
                 backup_pasta_destino = backup_pasta_destino_input or None
 
+            backup_senha_input = request.form.get("backup_senha", "")
+            senha_mudou = ""
+            if request.form.get("remover_backup_senha"):
+                conn.execute("UPDATE configuracoes SET backup_senha = NULL WHERE id = 1")
+                senha_mudou = "removida"
+            elif backup_senha_input:
+                if len(backup_senha_input) < 8:
+                    flash("A senha dos backups precisa ter pelo menos 8 caracteres. Ela não foi alterada.", "erro")
+                elif not criptografia_backup_disponivel():
+                    flash("Este computador não consegue criar backups com senha (falta o pyzipper). "
+                          "Rode o iniciar.bat de novo ou chame o suporte.", "erro")
+                else:
+                    conn.execute("UPDATE configuracoes SET backup_senha = ? WHERE id = 1", (backup_senha_input,))
+                    senha_mudou = "definida"
+
             conn.execute(
                 """UPDATE configuracoes
                    SET nome_instituicao = ?, rodape_cracha = ?, cor_primaria = ?,
@@ -168,7 +188,8 @@ def configuracoes():
             registrar_auditoria(
                 conn, "editar", "configuracoes", 1,
                 f"nome_instituicao={nome_instituicao}; cor_primaria={cor_primaria}; logo_trocado={'sim' if logo_trocado else 'nao'}; "
-                f"backup_frequencia_horas={backup_frequencia_horas}; backup_pasta_destino={backup_pasta_destino or '(nenhuma)'}",
+                f"backup_frequencia_horas={backup_frequencia_horas}; backup_pasta_destino={backup_pasta_destino or '(nenhuma)'}"
+                + (f"; senha_backup={senha_mudou}" if senha_mudou else ""),
             )
             flash("Configurações salvas.", "sucesso")
             return redirect(url_for("configuracoes"))
@@ -414,9 +435,12 @@ def backup_gerar():
     conn = db.get_db()
     try:
         registrar_auditoria(conn, "gerar_backup", "sistema")
+        senha = senha_backup(conn)
     finally:
         conn.close()
     zip_bytes = montar_backup_zip_bytes()
+    if senha:
+        zip_bytes = cifrar_zip(zip_bytes, senha)
     nome_arquivo = f"backup-ponto-{datetime.now().strftime('%Y%m%d-%H%M%S')}.zip"
     return send_file(
         io.BytesIO(zip_bytes), mimetype="application/zip", as_attachment=True, download_name=nome_arquivo
@@ -432,6 +456,14 @@ def backup_auto_download(nome_arquivo):
     caminho = nucleo.BACKUPS_AUTO_DIR / nome_arquivo
     if not caminho.exists():
         abort(404)
+    conn = db.get_db()
+    try:
+        senha = senha_backup(conn)
+    finally:
+        conn.close()
+    if senha:  # baixar = tirar do computador: vai com a senha
+        return send_file(io.BytesIO(cifrar_zip(caminho.read_bytes(), senha)), mimetype="application/zip",
+                         as_attachment=True, download_name=nome_arquivo)
     return send_file(caminho, mimetype="application/zip", as_attachment=True, download_name=nome_arquivo)
 
 
@@ -455,6 +487,11 @@ def backup_restaurar():
         arquivo.save(caminho_zip)
 
         try:
+            if zipfile.is_zipfile(caminho_zip) and backup_tem_senha(caminho_zip):
+                senha_informada = request.form.get("senha_backup", "")
+                if not senha_informada:
+                    raise ValueError("Este backup tem senha. Digite a senha do backup para restaurar.")
+                caminho_zip = decifrar_zip(caminho_zip, senha_informada, Path(pasta_tmp) / "sem-senha.zip")
             validar_backup_zip(caminho_zip)
         except ValueError as erro_validacao:
             flash(str(erro_validacao), "erro")
@@ -503,6 +540,6 @@ def backup_restaurar():
         finally:
             conn.close()
 
+    session.clear()  # antes do flash: o aviso fica guardado na sessão e sumia junto
     flash("Backup restaurado com sucesso. Faça login novamente.", "sucesso")
-    session.clear()
     return redirect(url_for("login"))

@@ -70,6 +70,24 @@
                 existir no computador. Deixe em branco pra desativar.
               </div>
             </div>
+            <div class="mb-3">
+              <label class="form-label" for="campo-backup-senha">Senha dos backups</label>
+              <input id="campo-backup-senha" type="password" name="backup_senha" class="form-control" minlength="8"
+                     autocomplete="new-password"
+                     placeholder="{{ 'Senha definida (deixe em branco para manter)' if config.backup_senha else 'Mínimo 8 caracteres' }}">
+              <div class="form-text">
+                Protege as cópias que saem do computador: a pasta extra acima e os backups baixados.
+                <strong>Anote a senha em lugar seguro: sem ela o backup não abre.</strong>
+              </div>
+              {% if config.backup_senha %}
+                <div class="form-check mt-1">
+                  <input class="form-check-input" type="checkbox" name="remover_backup_senha" id="remover-backup-senha" value="1">
+                  <label class="form-check-label small" for="remover-backup-senha">Remover a senha</label>
+                </div>
+              {% else %}
+                <div class="small text-warning-emphasis mt-1">Sem senha: quem pegar uma cópia vê CPF, salários e atestados.</div>
+              {% endif %}
+            </div>
             <div class="form-text mb-0">Veja os backups já gerados em <a href="{{ url_for('backup') }}">Backup</a>.</div>
           </div>
         </div>

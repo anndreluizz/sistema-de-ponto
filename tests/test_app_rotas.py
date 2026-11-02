@@ -465,3 +465,67 @@ def test_consulta_nao_baixa_qrcode_nem_foto(cliente):
         resposta = cliente.get(f"/admin/arquivos/{pasta}/1.png")
         assert resposta.status_code == 302
         assert resposta.headers["Location"].endswith("/admin/dashboard")
+
+
+# --- Senha nos backups que saem do computador --------------------------------
+
+
+def test_copia_externa_do_backup_vai_com_senha(cliente, tmp_path):
+    import app  # noqa: F401  (registra as rotas)
+    import nucleo
+
+    destino = tmp_path / "onedrive"
+    destino.mkdir()
+    conexao = db_module.get_db()
+    conexao.execute("UPDATE configuracoes SET backup_pasta_destino = ?, backup_senha = ? WHERE id = 1",
+                    (str(destino), "senha-forte-1"))
+    conexao.commit()
+    conexao.close()
+
+    nucleo.verificar_backup_automatico()
+    [local] = nucleo.BACKUPS_AUTO_DIR.glob("auto-*.zip")
+    [externo] = destino.glob("auto-*.zip")
+    assert not nucleo.backup_tem_senha(local)  # no próprio PC fica sem senha
+    assert nucleo.backup_tem_senha(externo)
+
+    aberto = nucleo.decifrar_zip(externo, "senha-forte-1", tmp_path / "aberto.zip")
+    from rotas.sistema import validar_backup_zip
+    validar_backup_zip(aberto)
+    try:
+        nucleo.decifrar_zip(externo, "errada", tmp_path / "x.zip")
+        assert False, "deveria recusar a senha errada"
+    except ValueError as erro:
+        assert "incorreta" in str(erro)
+
+
+def test_restaurar_backup_com_senha_pede_a_senha(cliente, tmp_path):
+    import io
+    import nucleo
+
+    _criar_usuario("admin_teste", "SenhaForte123!", "administrador")
+    _login(cliente, "admin_teste", "SenhaForte123!")
+    cifrado = nucleo.cifrar_zip(nucleo.montar_backup_zip_bytes(), "senha-forte-1")
+    token = _csrf_token(cliente.get("/admin/backup").get_data(as_text=True))
+    resposta = cliente.post("/admin/backup/restaurar", data={
+        "csrf_token": token, "confirmacao": "RESTAURAR",
+        "arquivo": (io.BytesIO(cifrado), "backup.zip"),
+    }, content_type="multipart/form-data", follow_redirects=True)
+    assert "Este backup tem senha" in resposta.get_data(as_text=True)
+
+
+def test_restaurar_backup_com_senha_certa_funciona(cliente, tmp_path, monkeypatch):
+    import io
+    import nucleo
+    import rotas.sistema
+
+    monkeypatch.setattr(rotas.sistema, "BASE_DIR", tmp_path)  # a cópia de segurança vai pra cá
+
+    _criar_usuario("admin_teste", "SenhaForte123!", "administrador")
+    _login(cliente, "admin_teste", "SenhaForte123!")
+    cifrado = nucleo.cifrar_zip(nucleo.montar_backup_zip_bytes(), "senha-forte-1")
+    token = _csrf_token(cliente.get("/admin/backup").get_data(as_text=True))
+    resposta = cliente.post("/admin/backup/restaurar", data={
+        "csrf_token": token, "confirmacao": "RESTAURAR", "senha_backup": "senha-forte-1",
+        "arquivo": (io.BytesIO(cifrado), "backup.zip"),
+    }, content_type="multipart/form-data", follow_redirects=True)
+    assert "Backup restaurado com sucesso" in resposta.get_data(as_text=True)

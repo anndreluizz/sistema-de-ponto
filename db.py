@@ -155,6 +155,8 @@ def _migrar_configuracoes(conn):
         conn.execute("ALTER TABLE configuracoes ADD COLUMN backup_frequencia_horas INTEGER NOT NULL DEFAULT 24")
     if "backup_pasta_destino" not in colunas:
         conn.execute("ALTER TABLE configuracoes ADD COLUMN backup_pasta_destino TEXT")
+    if "backup_senha" not in colunas:
+        conn.execute("ALTER TABLE configuracoes ADD COLUMN backup_senha TEXT")
     conn.commit()
 
 
