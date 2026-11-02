@@ -32,7 +32,8 @@ def cliente(tmp_path, monkeypatch):
     importação do app.py sempre bate num banco de teste, nunca no real."""
     monkeypatch.setattr(db_module, "DB_PATH", tmp_path / "teste_rotas.db")
     db_module.init_db()
-    import app as app_module
+    import app  # noqa: F401  (registra as rotas)
+    import nucleo as app_module
 
     # Toda página logada dispara o backup automático: sem isso, os testes gravavam zips do
     # banco de teste em backups/auto/ (pasta REAL) e o sistema pulava o backup verdadeiro.

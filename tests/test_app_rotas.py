@@ -273,7 +273,8 @@ def test_senha_padrao_obriga_troca_antes_de_usar_o_sistema(cliente):
 
 
 def test_backup_automatico_roda_sem_requisicao_e_audita_falha(cliente, tmp_path):
-    import app as app_module
+    import app  # noqa: F401  (registra as rotas)
+    import nucleo as app_module
 
     app_module.verificar_backup_automatico()
     assert len(list(app_module.BACKUPS_AUTO_DIR.glob("auto-*.zip"))) == 1
@@ -296,13 +297,13 @@ def test_backup_automatico_roda_sem_requisicao_e_audita_falha(cliente, tmp_path)
 def test_restaurar_recusa_backup_corrompido(tmp_path):
     import zipfile
 
-    import app as app_module
+    from rotas.sistema import validar_backup_zip
 
     caminho_zip = tmp_path / "ruim.zip"
     with zipfile.ZipFile(caminho_zip, "w") as zf:
         zf.writestr("ponto.db", b"isto nao e um banco sqlite" * 100)
     try:
-        app_module.validar_backup_zip(caminho_zip)
+        validar_backup_zip(caminho_zip)
         assert False, "deveria ter recusado"
     except ValueError as erro:
         assert "corrompido" in str(erro)

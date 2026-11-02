@@ -57,6 +57,25 @@ Ele roda **no computador da escola, sem internet**, porque no interior do Amazon
 
 Flask + SQLite, servido pelo Waitress. PDFs com fpdf2, planilhas com openpyxl, QR Code com qrcode e leitura no navegador com jsQR.
 
+## Organização do código
+
+```
+app.py                 ponto de entrada (python app.py ou waitress app:app)
+nucleo.py              app Flask, segurança (login, perfis, CSRF), auditoria e backup automático
+rotas/
+  totem.py             leitura do crachá e fotos da batida
+  acesso.py            login, painel e troca de senha
+  funcionarios.py      cadastro, documentos, crachá, histórico, banco de horas e ausências
+  cadastros.py         setores, turnos, escalas e feriados
+  relatorios.py        relatórios, exportações, ajustes de ponto e fechamento do mês
+  sistema.py           configurações, usuários, auditoria e backup
+db.py                  banco SQLite, migrações e travas do mês fechado
+relatorios_service.py  cálculo de atrasos, faltas, horas e banco de horas
+exportadores.py        PDF e Excel
+templates/, static/    telas (Jinja + Bootstrap)
+tests/                 testes automatizados (pytest)
+```
+
 ## Como experimentar
 
 ```bash
