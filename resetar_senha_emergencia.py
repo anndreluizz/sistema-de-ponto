@@ -51,6 +51,12 @@ def main():
                WHERE id = ?""",
             (generate_password_hash(nova_senha), usuario_id),
         )
+        # Bloqueios de login por aparelho (tabela criada pelo sistema; pode não existir em banco antigo)
+        if conn.execute("SELECT 1 FROM sqlite_master WHERE name = 'bloqueios_login'").fetchone():
+            conn.execute(
+                "DELETE FROM bloqueios_login WHERE usuario = (SELECT usuario FROM usuarios WHERE id = ?)",
+                (usuario_id,),
+            )
         conn.commit()
         print("\nSenha redefinida com sucesso. O usuário também foi marcado como ativo e desbloqueado.")
     finally:

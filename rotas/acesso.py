@@ -184,25 +184,27 @@ def login():
             ).fetchone()
             agora = datetime.now()
 
-            if registro and registro["bloqueado_ate"]:
-                bloqueado_ate = datetime.strptime(registro["bloqueado_ate"], "%Y-%m-%d %H:%M:%S")
+            ip = request.remote_addr or "?"
+            bloqueio = conn.execute(
+                "SELECT tentativas, bloqueado_ate FROM bloqueios_login WHERE usuario = ? AND ip = ?",
+                (usuario, ip),
+            ).fetchone()
+
+            if bloqueio and bloqueio["bloqueado_ate"]:
+                bloqueado_ate = datetime.strptime(bloqueio["bloqueado_ate"], "%Y-%m-%d %H:%M:%S")
                 if agora < bloqueado_ate:
-                    registrar_auditoria(conn, "login_bloqueado", "usuario", registro["id"])
+                    registrar_auditoria(conn, "login_bloqueado", "usuario", registro["id"] if registro else None)
                     minutos_restantes = int((bloqueado_ate - agora).total_seconds() // 60) + 1
                     flash(
-                        f"Conta bloqueada por tentativas seguidas incorretas. "
+                        f"Entrada bloqueada neste aparelho por tentativas seguidas incorretas. "
                         f"Tente novamente em {minutos_restantes} minuto(s).",
                         "erro",
                     )
                     return render_template("login.html")
 
             if registro and check_password_hash(registro["senha_hash"], senha):
-                if registro["tentativas_falhas"] or registro["bloqueado_ate"]:
-                    conn.execute(
-                        "UPDATE usuarios SET tentativas_falhas = 0, bloqueado_ate = NULL WHERE id = ?",
-                        (registro["id"],),
-                    )
-                    conn.commit()
+                conn.execute("DELETE FROM bloqueios_login WHERE usuario = ? AND ip = ?", (usuario, ip))
+                conn.commit()
                 session.clear()
                 session.permanent = True
                 if senha == db.ADMIN_PADRAO_SENHA:
@@ -218,33 +220,36 @@ def login():
                     proximo = url_for("dashboard")
                 return redirect(proximo)
 
-            if registro:
-                tentativas = (registro["tentativas_falhas"] or 0) + 1
-                if tentativas >= MAX_TENTATIVAS_LOGIN:
-                    bloqueado_ate_novo = (agora + timedelta(minutes=BLOQUEIO_LOGIN_MINUTOS)).strftime(
-                        "%Y-%m-%d %H:%M:%S"
-                    )
-                    conn.execute(
-                        "UPDATE usuarios SET tentativas_falhas = ?, bloqueado_ate = ? WHERE id = ?",
-                        (tentativas, bloqueado_ate_novo, registro["id"]),
-                    )
-                    conn.commit()
-                    registrar_auditoria(
-                        conn, "login_bloqueado", "usuario", registro["id"], detalhes=f"tentativas={tentativas}"
-                    )
-                    flash(
-                        f"Conta bloqueada por {BLOQUEIO_LOGIN_MINUTOS} minutos após "
-                        f"{MAX_TENTATIVAS_LOGIN} tentativas seguidas incorretas.",
-                        "erro",
-                    )
-                    return render_template("login.html")
-                conn.execute(
-                    "UPDATE usuarios SET tentativas_falhas = ? WHERE id = ?",
-                    (tentativas, registro["id"]),
+            # Conta usuário inexistente também, senão dá para testar nomes à vontade.
+            tentativas = ((bloqueio["tentativas"] if bloqueio else 0) or 0) + 1
+            bloqueado_ate_novo = None
+            if tentativas >= MAX_TENTATIVAS_LOGIN:
+                bloqueado_ate_novo = (agora + timedelta(minutes=BLOQUEIO_LOGIN_MINUTOS)).strftime("%Y-%m-%d %H:%M:%S")
+            conn.execute(
+                """INSERT INTO bloqueios_login (usuario, ip, tentativas, bloqueado_ate) VALUES (?, ?, ?, ?)
+                   ON CONFLICT (usuario, ip) DO UPDATE SET tentativas = excluded.tentativas,
+                                                          bloqueado_ate = excluded.bloqueado_ate""",
+                (usuario, ip, 0 if bloqueado_ate_novo else tentativas, bloqueado_ate_novo),
+            )
+            conn.commit()
+            if bloqueado_ate_novo:
+                registrar_auditoria(
+                    conn, "login_bloqueado", "usuario", registro["id"] if registro else None,
+                    detalhes=f"tentativas={tentativas}",
                 )
-                conn.commit()
+                flash(
+                    f"Entrada bloqueada neste aparelho por {BLOQUEIO_LOGIN_MINUTOS} minutos após "
+                    f"{MAX_TENTATIVAS_LOGIN} tentativas seguidas incorretas.",
+                    "erro",
+                )
+                return render_template("login.html")
 
-            registrar_auditoria(conn, "login_falha", "usuario", detalhes=f"usuario_tentado={usuario}")
+            # O texto digitado no campo usuário só vai para a auditoria se for um usuário de verdade:
+            # às vezes a pessoa digita a senha no campo errado.
+            registrar_auditoria(
+                conn, "login_falha", "usuario", registro["id"] if registro else None,
+                detalhes=f"usuario_tentado={usuario if registro else '(não existe)'}",
+            )
         finally:
             conn.close()
 

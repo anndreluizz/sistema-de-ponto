@@ -529,3 +529,22 @@ def test_restaurar_backup_com_senha_certa_funciona(cliente, tmp_path, monkeypatc
         "arquivo": (io.BytesIO(cifrado), "backup.zip"),
     }, content_type="multipart/form-data", follow_redirects=True)
     assert "Backup restaurado com sucesso" in resposta.get_data(as_text=True)
+
+
+def test_bloqueio_de_login_e_por_aparelho(cliente):
+    # Antes, errar a senha do admin 5 vezes de qualquer aparelho travava a conta para todos.
+    _criar_usuario("admin_teste", "SenhaForte123!", "administrador")
+
+    def tentar(senha, ip):
+        token = _csrf_token(cliente.get("/admin/login", environ_base={"REMOTE_ADDR": ip}).get_data(as_text=True))
+        return cliente.post("/admin/login", data={"csrf_token": token, "usuario": "admin_teste", "senha": senha},
+                            environ_base={"REMOTE_ADDR": ip})
+
+    for _ in range(5):
+        resposta = tentar("errada", "10.0.0.66")
+    assert "bloqueada" in resposta.get_data(as_text=True).lower()
+    assert "bloqueada" in tentar("SenhaForte123!", "10.0.0.66").get_data(as_text=True).lower()
+
+    resposta_outro_aparelho = tentar("SenhaForte123!", "10.0.0.10")
+    assert resposta_outro_aparelho.status_code == 302
+    assert "/admin/dashboard" in resposta_outro_aparelho.headers["Location"]

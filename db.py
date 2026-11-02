@@ -221,6 +221,21 @@ def _migrar_turnos(conn):
     conn.commit()
 
 
+def _migrar_bloqueios_login(conn):
+    """Tentativas erradas por usuário E aparelho: errar a senha do admin num aparelho
+    não trava o admin nos outros (antes qualquer um da rede travava a conta)."""
+    conn.execute(
+        """CREATE TABLE IF NOT EXISTS bloqueios_login (
+               usuario TEXT NOT NULL,
+               ip TEXT NOT NULL,
+               tentativas INTEGER NOT NULL DEFAULT 0,
+               bloqueado_ate TEXT,
+               PRIMARY KEY (usuario, ip)
+           )"""
+    )
+    conn.commit()
+
+
 def _migrar_usuarios_seguranca(conn):
     colunas = _colunas_existentes(conn, "usuarios")
     if "tentativas_falhas" not in colunas:
@@ -473,6 +488,7 @@ def init_db():
 
         _migrar_usuarios(conn)
         _migrar_usuarios_seguranca(conn)
+        _migrar_bloqueios_login(conn)
         _criar_travas_mes_fechado(conn)  # por último: _migrar_ausencias_tipos recria a tabela
     finally:
         conn.close()

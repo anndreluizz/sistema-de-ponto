@@ -118,7 +118,10 @@ voce é o UNICO Administrador e perdeu a senha, veja "RECUPERACAO DE
 EMERGENCIA" mais abaixo.
 
 Por seguranca, depois de 5 tentativas de senha erradas seguidas, o login
-fica bloqueado por 15 minutos (mesmo com a senha certa). E, por
+daquele usuario fica bloqueado por 15 minutos NAQUELE APARELHO (mesmo com a
+senha certa). Nos outros computadores/celulares ele continua entrando
+normalmente — assim ninguem consegue travar o acesso da direcao so errando
+a senha de proposito. E, por
 inatividade, a sessao expira sozinha depois de 60 minutos sem uso — basta
 entrar de novo com usuario e senha.
 
@@ -251,8 +254,15 @@ Menu "Backup" (so Administrador):
   programa tipo OneDrive ou Google Drive (o sistema so copia o arquivo pra
   pasta local do computador; quem sincroniza com a nuvem é o proprio
   programa). A pasta precisa ja existir no computador.
+- SENHA DOS BACKUPS (Configuracoes): com ela, as copias que saem do
+  computador (a pasta de destino extra e os backups baixados) ficam
+  protegidas por senha. Quem achar um pendrive perdido nao ve CPF, salarios
+  nem atestados. Abrem no 7-Zip/WinRAR com a senha. ANOTE A SENHA em lugar
+  seguro: sem ela o backup nao abre. Os backups automaticos que ficam no
+  proprio computador continuam sem senha.
 - "Restaurar backup": substitui TODOS os dados atuais pelos dados de um
-  arquivo de backup. Exige digitar a palavra RESTAURAR para confirmar, e o
+  arquivo de backup. Se o backup tiver senha, digite-a no campo "Senha do
+  backup". Exige digitar a palavra RESTAURAR para confirmar, e o
   sistema guarda uma copia de seguranca do estado atual antes de trocar
   (arquivo "ponto.db.bak-antes-restaurar-<data>", nesta mesma pasta) — mas
   use com cuidado, é dificil de desfazer.
