@@ -9,9 +9,6 @@ import relatorios_service
 from nucleo import (
     BLOQUEIO_LOGIN_MINUTOS,
     MAX_TENTATIVAS_LOGIN,
-    NOMES_MESES,
-    QUANTIDADE_MESES_COMPARATIVO,
-    TOP_N_RANKING_ATRASOS,
     app,
     login_obrigatorio,
     registrar_auditoria,
@@ -133,13 +130,13 @@ def calcular_dashboard(conn):
     atestados_hoje = _ativos_com_ausencia_hoje("atestado")
     horas_extras_hoje_seg = relatorios_service.calcular_horas_extras_hoje(conn)
 
-    ultimo_ponto = conn.execute(
+    ultimas_batidas = conn.execute(
         """SELECT registros.*, funcionarios.nome, funcionarios.foto, funcionarios.cargo
            FROM registros JOIN funcionarios ON funcionarios.id = registros.funcionario_id
            WHERE registros.timestamp >= ? AND registros.timestamp < date(?, '+1 day')
-           ORDER BY registros.timestamp DESC LIMIT 1""",
+           ORDER BY registros.timestamp DESC LIMIT 8""",
         (hoje, hoje),
-    ).fetchone()
+    ).fetchall()
 
     return {
         "total_ativos": len(ativos),
@@ -154,70 +151,8 @@ def calcular_dashboard(conn):
         "atestados_hoje": atestados_hoje,
         "horas_extras_hoje": relatorios_service.formatar_horas(horas_extras_hoje_seg),
         "registros_hoje": len(registros_hoje),
-        "ultimo_ponto": ultimo_ponto,
+        "ultimas_batidas": ultimas_batidas,
     }
-
-
-def calcular_presenca_ultimos_dias(conn, dias=7):
-    total_ativos = conn.execute("SELECT COUNT(*) AS n FROM funcionarios WHERE situacao = 'ativo'").fetchone()["n"]
-    resultado = []
-    for i in range(dias - 1, -1, -1):
-        dia = date.today() - timedelta(days=i)
-        presentes = conn.execute(
-            """SELECT COUNT(DISTINCT registros.funcionario_id) AS n
-               FROM registros JOIN funcionarios ON funcionarios.id = registros.funcionario_id
-               WHERE registros.timestamp >= ? AND registros.timestamp < date(?, '+1 day') AND funcionarios.situacao = 'ativo'""",
-            (dia.isoformat(), dia.isoformat()),
-        ).fetchone()["n"]
-        resultado.append(
-            {
-                "data": dia,
-                "presentes": presentes,
-                "total": total_ativos,
-                "percentual": round(presentes / total_ativos * 100) if total_ativos else 0,
-            }
-        )
-    return resultado
-
-
-def calcular_presenca_por_setor(conn, dias=7):
-    data_inicio = date.today() - timedelta(days=dias - 1)
-    data_fim = date.today()
-
-    setores = conn.execute("SELECT id, nome FROM setores ORDER BY nome").fetchall()
-    grupos = [(s["id"], s["nome"]) for s in setores] + [(None, "Sem setor")]
-
-    resultado = []
-    for setor_id, setor_nome in grupos:
-        if setor_id is not None:
-            funcionarios = conn.execute(
-                "SELECT id FROM funcionarios WHERE situacao = 'ativo' AND setor_id = ?", (setor_id,)
-            ).fetchall()
-        else:
-            funcionarios = conn.execute(
-                "SELECT id FROM funcionarios WHERE situacao = 'ativo' AND setor_id IS NULL"
-            ).fetchall()
-
-        if not funcionarios:
-            continue
-
-        ids_funcionarios = [f["id"] for f in funcionarios]
-        placeholders = ",".join("?" * len(ids_funcionarios))
-        dias_com_presenca = conn.execute(
-            f"""SELECT COUNT(DISTINCT date(timestamp)) AS n FROM registros
-                WHERE funcionario_id IN ({placeholders})
-                  AND timestamp >= date(?) AND timestamp < date(?, '+1 day')""",
-            [*ids_funcionarios, data_inicio.isoformat(), data_fim.isoformat()],
-        ).fetchone()["n"]
-
-        resultado.append(
-            {
-                "setor_nome": setor_nome,
-                "percentual": round(dias_com_presenca / dias * 100) if dias else 0,
-            }
-        )
-
-    return resultado
 
 
 @app.route("/admin")
@@ -229,38 +164,9 @@ def admin_index():
 @app.route("/admin/dashboard")
 @login_obrigatorio
 def dashboard():
-    periodo_grafico = request.args.get("periodo_grafico", "7")
-    periodo_grafico = 30 if periodo_grafico == "30" else 7
-
     conn = db.get_db()
     try:
-        indicadores = calcular_dashboard(conn)
-        presenca_semana = calcular_presenca_ultimos_dias(conn, dias=periodo_grafico)
-        presenca_setor = calcular_presenca_por_setor(conn, dias=periodo_grafico)
-
-        comparativo_mensal = relatorios_service.montar_comparativo_mensal(
-            conn, quantidade_meses=QUANTIDADE_MESES_COMPARATIVO
-        )
-        for item in comparativo_mensal:
-            item["rotulo"] = f"{NOMES_MESES[item['mes']][:3]}/{item['ano']}"
-
-        ranking_atrasos = []
-        if session.get("usuario_perfil") != "consulta":
-            hoje = date.today()
-            data_inicio_ranking = (hoje - timedelta(days=periodo_grafico - 1)).isoformat()
-            ranking_atrasos = relatorios_service.montar_ranking_atrasos(
-                conn, data_inicio_ranking, hoje.isoformat(), top_n=TOP_N_RANKING_ATRASOS
-            )
-
-        return render_template(
-            "dashboard.html",
-            indicadores=indicadores,
-            presenca_semana=presenca_semana,
-            presenca_setor=presenca_setor,
-            periodo_grafico=periodo_grafico,
-            comparativo_mensal=comparativo_mensal,
-            ranking_atrasos=ranking_atrasos,
-        )
+        return render_template("dashboard.html", indicadores=calcular_dashboard(conn))
     finally:
         conn.close()
 

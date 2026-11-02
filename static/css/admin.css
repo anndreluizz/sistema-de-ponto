@@ -95,15 +95,6 @@ a { text-decoration: none; }
 .card { border: none; border-radius: 1rem; box-shadow: var(--sombra-suave); transition: box-shadow 0.2s ease, transform 0.2s ease; }
 .card.card-hover:hover { box-shadow: var(--sombra-media); transform: translateY(-2px); }
 
-.card-indicador { padding: 20px 22px; }
-.card-indicador .indicador-icone {
-  width: 48px; height: 48px; border-radius: 0.8rem;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 1.3rem; margin-bottom: 14px;
-}
-.card-indicador .indicador-valor { font-size: 2rem; font-weight: 700; line-height: 1; }
-.card-indicador .indicador-rotulo { color: #6b7280; font-size: 0.85rem; margin-top: 6px; }
-
 .icone-setor {
   width: 32px; height: 32px; border-radius: 0.6rem; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center; font-size: 1rem;
@@ -122,21 +113,18 @@ a { text-decoration: none; }
   color: #fff; font-weight: 700; flex-shrink: 0;
 }
 
-/* ---------- Gráfico de presença ---------- */
-.grafico-presenca { display: flex; align-items: flex-end; gap: 14px; height: 180px; padding-top: 10px; }
-.grafico-presenca-coluna {
-  flex: 1; display: flex; flex-direction: column; align-items: center;
-  justify-content: flex-end; height: 100%; gap: 6px;
+/* ---------- Painel (Hoje) ---------- */
+.painel-numeros { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.painel-numero {
+  background: #fff; border-radius: 0.8rem; box-shadow: var(--sombra-suave);
+  padding: 18px 20px; display: flex; flex-direction: column; gap: 4px;
 }
-.grafico-presenca-barra {
-  width: 100%; max-width: 36px; background: var(--bs-primary);
-  border-radius: 8px 8px 2px 2px; animation: crescer-barra 0.6s ease;
-  min-height: 3px;
-}
-.grafico-presenca-legenda { font-size: 0.75rem; color: #6b7280; }
-@keyframes crescer-barra { from { height: 0; } }
-
-.grafico-canvas-wrapper { position: relative; height: 280px; }
+.painel-valor { font-size: 2.2rem; font-weight: 700; line-height: 1; color: #1f2933; }
+.painel-rotulo { color: #6b7280; font-size: 0.9rem; }
+.painel-linha { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-bottom: 1px solid #eef1f4; }
+.painel-linha:last-child { border-bottom: none; }
+.painel-hora { font-variant-numeric: tabular-nums; color: #6b7280; white-space: nowrap; flex-shrink: 0; }
+@media (max-width: 575.98px) { .painel-numeros { grid-template-columns: repeat(2, 1fr); } }
 
 /* ---------- Tabela de funcionários ---------- */
 .tabela-funcionarios td { vertical-align: middle; }

@@ -34,7 +34,7 @@ Ele roda **no computador da escola, sem internet**, porque no interior do Amazon
 - Crachá com QR Code pronto para imprimir
 
 **Relatórios**
-- Painel do dia: presentes, ausentes, em intervalo, atrasos e gráficos de presença
+- Painel do dia: quantos estão presentes, quem ainda não chegou (e quem já passou do horário), atrasos e as últimas batidas
 - Relatório por período, histórico por funcionário e espelho de ponto
 - Folha de ponto mensal agrupada por categoria (gestão, apoio pedagógico, professores, outros)
 - Exportação em PDF, Excel e CSV
