@@ -64,14 +64,14 @@ ICONES_SETOR_DISPONIVEIS = [
 ]
 
 NAVEGACAO = {
-    "dashboard": {"titulo": "Dashboard", "trilha": []},
+    "dashboard": {"titulo": "Hoje", "trilha": []},
     "funcionarios": {"titulo": "Funcionários", "trilha": []},
     "novo_funcionario": {"titulo": "Novo funcionário", "trilha": [("Funcionários", "funcionarios")]},
     "editar_funcionario": {"titulo": "Editar funcionário", "trilha": [("Funcionários", "funcionarios")]},
     "historico_funcionario": {"titulo": "Histórico de ponto", "trilha": [("Funcionários", "funcionarios")]},
     "banco_horas_funcionario": {"titulo": "Banco de horas", "trilha": [("Funcionários", "funcionarios")]},
     "historico_alteracoes_funcionario": {"titulo": "Histórico de alterações", "trilha": [("Funcionários", "funcionarios")]},
-    "relatorios": {"titulo": "Central de Relatórios", "trilha": []},
+    "relatorios": {"titulo": "Relatórios", "trilha": []},
     "ajustes_ponto": {"titulo": "Ajustes de Ponto", "trilha": []},
     "setores": {"titulo": "Setores", "trilha": [("Funcionários", "funcionarios")]},
     "turnos": {"titulo": "Turnos", "trilha": [("Funcionários", "funcionarios")]},
