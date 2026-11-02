@@ -8,7 +8,6 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap/bootstrap.min.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap-icons/bootstrap-icons.min.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='vendor/inter/fonts.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
   {% if cor_primaria %}
   <style>
@@ -43,13 +42,13 @@
     {% with mensagens = get_flashed_messages(with_categories=true) %}
       {% for categoria, mensagem in mensagens %}
         <div class="toast align-items-center text-bg-{{ 'success' if categoria == 'sucesso' else 'danger' }} border-0"
-             role="alert" data-bs-autohide="true" data-bs-delay="5000">
+             role="alert" data-bs-autohide="{{ 'true' if categoria == 'sucesso' else 'false' }}" data-bs-delay="5000">
           <div class="d-flex">
             <div class="toast-body">
               <i class="bi {{ 'bi-check-circle' if categoria == 'sucesso' else 'bi-exclamation-triangle' }} me-2"></i>
               {{ mensagem }}
             </div>
-            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Fechar aviso"></button>
           </div>
         </div>
       {% endfor %}
@@ -61,7 +60,7 @@
       <div class="modal-content">
         <div class="modal-header">
           <h5 class="modal-title"><i class="bi bi-exclamation-triangle text-warning me-2"></i>Confirmar ação</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
         </div>
         <div class="modal-body" id="modal-confirmar-texto"></div>
         <div class="modal-footer">

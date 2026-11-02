@@ -25,24 +25,24 @@
       <h2 class="h6 fw-bold mb-3">Consultar um período</h2>
       <div class="row g-2 align-items-end">
         <div class="col-6 col-md-3">
-          <label class="form-label small mb-1">De</label>
-          <input type="date" name="data_inicio" class="form-control" value="{{ data_inicio }}">
+          <label class="form-label small mb-1" for="campo-data-inicio">De</label>
+          <input id="campo-data-inicio" type="date" name="data_inicio" class="form-control" value="{{ data_inicio }}">
         </div>
         <div class="col-6 col-md-3">
-          <label class="form-label small mb-1">Até</label>
-          <input type="date" name="data_fim" class="form-control" value="{{ data_fim }}">
+          <label class="form-label small mb-1" for="campo-data-fim">Até</label>
+          <input id="campo-data-fim" type="date" name="data_fim" class="form-control" value="{{ data_fim }}">
         </div>
         <div class="col-6 col-md-2">
-          <label class="form-label small mb-1">Mostrar</label>
-          <select name="visao" class="form-select">
+          <label class="form-label small mb-1" for="campo-visao">Mostrar</label>
+          <select id="campo-visao" name="visao" class="form-select">
             {% for chave, rotulo in nomes_visao.items() %}
               <option value="{{ chave }}" {{ "selected" if visao == chave else "" }}>{{ rotulo }}</option>
             {% endfor %}
           </select>
         </div>
         <div class="col-6 col-md-2">
-          <label class="form-label small mb-1">Por</label>
-          <select name="agrupar_por" class="form-select">
+          <label class="form-label small mb-1" for="campo-agrupar-por">Por</label>
+          <select id="campo-agrupar-por" name="agrupar_por" class="form-select">
             <option value="funcionario" {{ "selected" if agrupar_por == "funcionario" else "" }}>Funcionário</option>
             <option value="setor" {{ "selected" if agrupar_por == "setor" else "" }}>Setor</option>
             <option value="cargo" {{ "selected" if agrupar_por == "cargo" else "" }}>Cargo</option>
@@ -111,7 +111,7 @@
               {% endif %}
             </tr>
           {% else %}
-            <tr><td colspan="5" class="text-secondary text-center py-4">Nenhum dado encontrado para esse filtro.</td></tr>
+            <tr><td colspan="8" class="text-secondary text-center py-4">Nenhum dado encontrado para esse filtro.</td></tr>
           {% endfor %}
         </tbody>
       </table>

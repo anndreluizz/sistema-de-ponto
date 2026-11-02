@@ -13,12 +13,12 @@
     <div class="card-body">
       <div class="row g-2 align-items-end">
         <div class="col-md-4">
-          <label class="form-label">De</label>
-          <input type="date" name="data_inicio" class="form-control" value="{{ data_inicio }}">
+          <label class="form-label" for="campo-data-inicio">De</label>
+          <input id="campo-data-inicio" type="date" name="data_inicio" class="form-control" value="{{ data_inicio }}">
         </div>
         <div class="col-md-4">
-          <label class="form-label">Até</label>
-          <input type="date" name="data_fim" class="form-control" value="{{ data_fim }}">
+          <label class="form-label" for="campo-data-fim">Até</label>
+          <input id="campo-data-fim" type="date" name="data_fim" class="form-control" value="{{ data_fim }}">
         </div>
         <div class="col-md-4">
           <button type="submit" class="btn btn-primary w-100"><i class="bi bi-funnel me-1"></i>Filtrar</button>
@@ -45,8 +45,8 @@
     <div class="card-body">
       <div class="row g-2 align-items-end">
         <div class="col-md-4">
-          <label class="form-label">Espelho de Ponto (mês)</label>
-          <input type="month" name="mes" class="form-control" value="{{ mes_atual }}">
+          <label class="form-label" for="campo-mes">Espelho de Ponto (mês)</label>
+          <input id="campo-mes" type="month" name="mes" class="form-control" value="{{ mes_atual }}">
         </div>
         <div class="col-md-4">
           <button type="submit" class="btn btn-outline-secondary w-100">

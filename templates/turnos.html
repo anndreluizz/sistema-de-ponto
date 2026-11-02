@@ -3,6 +3,7 @@
 {% set dias_semana_opcoes = [(0, "Seg"), (1, "Ter"), (2, "Qua"), (3, "Qui"), (4, "Sex"), (5, "Sáb"), (6, "Dom")] %}
 {% block titulo %}Turnos{% endblock %}
 {% block conteudo %}
+  <h1 class="h3 fw-bold mb-4">Turnos</h1>
   <div class="row g-4">
     <div class="col-lg-5">
       <div class="card">
@@ -27,35 +28,35 @@
 
             <div class="row g-2">
               <div class="col">
-                <label class="form-label small mb-1">Entrada</label>
-                <input type="time" name="horario_entrada" class="form-control" required>
+                <label class="form-label small mb-1" for="campo-horario-entrada">Entrada</label>
+                <input id="campo-horario-entrada" type="time" name="horario_entrada" class="form-control" required>
               </div>
               <div class="col">
-                <label class="form-label small mb-1">Saída</label>
-                <input type="time" name="horario_saida" class="form-control" required>
+                <label class="form-label small mb-1" for="campo-horario-saida">Saída</label>
+                <input id="campo-horario-saida" type="time" name="horario_saida" class="form-control" required>
               </div>
             </div>
 
             <div class="row g-2">
               <div class="col">
-                <label class="form-label small mb-1">Saída p/ almoço</label>
-                <input type="time" name="horario_saida_almoco" class="form-control">
+                <label class="form-label small mb-1" for="campo-horario-saida-almoco">Saída p/ almoço</label>
+                <input id="campo-horario-saida-almoco" type="time" name="horario_saida_almoco" class="form-control">
               </div>
               <div class="col">
-                <label class="form-label small mb-1">Retorno do almoço</label>
-                <input type="time" name="horario_retorno_almoco" class="form-control">
+                <label class="form-label small mb-1" for="campo-horario-retorno-almoco">Retorno do almoço</label>
+                <input id="campo-horario-retorno-almoco" type="time" name="horario_retorno_almoco" class="form-control">
               </div>
             </div>
             <div class="form-text mt-0">Deixe os dois em branco se esse turno não tem intervalo de almoço.</div>
 
             <div class="row g-2">
               <div class="col">
-                <label class="form-label small mb-1">Tolerância de entrada (min)</label>
-                <input type="number" name="tolerancia_minutos" class="form-control" value="10" min="0" max="120">
+                <label class="form-label small mb-1" for="campo-tolerancia-minutos">Tolerância de entrada (min)</label>
+                <input id="campo-tolerancia-minutos" type="number" name="tolerancia_minutos" class="form-control" value="10" min="0" max="120">
               </div>
               <div class="col">
-                <label class="form-label small mb-1">Tolerância de saída (min)</label>
-                <input type="number" name="tolerancia_saida_minutos" class="form-control" value="10" min="0" max="120">
+                <label class="form-label small mb-1" for="campo-tolerancia-saida-minutos">Tolerância de saída (min)</label>
+                <input id="campo-tolerancia-saida-minutos" type="number" name="tolerancia_saida_minutos" class="form-control" value="10" min="0" max="120">
               </div>
             </div>
             <button type="submit" class="btn btn-primary mt-1"><i class="bi bi-plus-lg me-1"></i>Adicionar</button>

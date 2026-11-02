@@ -2,6 +2,7 @@
 {% from "_macros.html" import csrf_input %}
 {% block titulo %}Configurações{% endblock %}
 {% block conteudo %}
+  <h1 class="h3 fw-bold mb-4">Configurações</h1>
   <form method="post" enctype="multipart/form-data">
     {{ csrf_input() }}
     <div class="row g-4">
@@ -10,30 +11,30 @@
           <div class="card-body">
             <h2 class="h6 fw-bold mb-3">Dados da instituição</h2>
             <div class="mb-3">
-              <label class="form-label">Nome da instituição</label>
-              <input type="text" name="nome_instituicao" class="form-control"
+              <label class="form-label" for="campo-nome-instituicao">Nome da instituição</label>
+              <input id="campo-nome-instituicao" type="text" name="nome_instituicao" class="form-control"
                      value="{{ config.nome_instituicao }}" placeholder="Ex: Escola Municipal Exemplo">
             </div>
             <div class="mb-3">
-              <label class="form-label">Logo</label>
+              <label class="form-label" for="campo-logo">Logo</label>
               <div class="d-flex align-items-center gap-3">
                 {% if config.logo_path %}
                   <img src="{{ url_for('static', filename=config.logo_path) }}" alt="Logo atual" style="max-height:60px;">
                 {% endif %}
-                <input type="file" name="logo" class="form-control" accept=".png,.jpg,.jpeg,.webp">
+                <input id="campo-logo" type="file" name="logo" class="form-control" accept=".png,.jpg,.jpeg,.webp">
               </div>
               <div class="form-text">Aparece no crachá e no totem. Formatos aceitos: JPG, PNG ou WEBP.</div>
             </div>
             <div class="mb-3">
-              <label class="form-label">Rodapé do crachá</label>
-              <input type="text" name="rodape_cracha" class="form-control"
+              <label class="form-label" for="campo-rodape-cracha">Rodapé do crachá</label>
+              <input id="campo-rodape-cracha" type="text" name="rodape_cracha" class="form-control"
                      value="{{ config.rodape_cracha }}" placeholder="Ex: Válido somente para uso interno">
             </div>
             <div class="mb-3">
-              <label class="form-label d-block">Cor principal do sistema</label>
-              <input type="color" name="cor_primaria" class="form-control form-control-color"
+              <label class="form-label d-block" for="campo-cor-primaria">Cor principal do sistema</label>
+              <input id="campo-cor-primaria" type="color" name="cor_primaria" class="form-control form-control-color"
                      value="{{ config.cor_primaria or '#1E40AF' }}" title="Escolha a cor principal">
-              <div class="form-text">Usada na barra lateral, botões e destaques em todo o sistema.</div>
+              <div class="form-text">Usada no menu, nos botões e nos destaques de todo o sistema.</div>
             </div>
           </div>
         </div>
@@ -44,8 +45,8 @@
           <div class="card-body">
             <h2 class="h6 fw-bold mb-3">Backup automático</h2>
             <div class="mb-3">
-              <label class="form-label">Frequência</label>
-              <select name="backup_frequencia_horas" class="form-select">
+              <label class="form-label" for="campo-backup-frequencia-horas">Frequência</label>
+              <select id="campo-backup-frequencia-horas" name="backup_frequencia_horas" class="form-select">
                 <option value="6" {{ "selected" if config.backup_frequencia_horas == 6 else "" }}>A cada 6 horas</option>
                 <option value="12" {{ "selected" if config.backup_frequencia_horas == 12 else "" }}>A cada 12 horas</option>
                 <option value="24" {{ "selected" if not config.backup_frequencia_horas or config.backup_frequencia_horas == 24 else "" }}>A cada 24 horas (padrão)</option>
@@ -58,8 +59,8 @@
               </div>
             </div>
             <div class="mb-3">
-              <label class="form-label">Pasta de destino extra (opcional)</label>
-              <input type="text" name="backup_pasta_destino" class="form-control"
+              <label class="form-label" for="campo-backup-pasta-destino">Pasta de destino extra (opcional)</label>
+              <input id="campo-backup-pasta-destino" type="text" name="backup_pasta_destino" class="form-control"
                      value="{{ config.backup_pasta_destino or '' }}"
                      placeholder="Ex: C:\Users\seu-usuario\OneDrive\Backups Ponto">
               <div class="form-text">

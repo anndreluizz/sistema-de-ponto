@@ -1,8 +1,8 @@
 :root {
   --bs-primary: #1E40AF;
   --bs-primary-rgb: 30, 64, 175;
-  --bs-success: #16A34A;
-  --bs-success-rgb: 22, 163, 74;
+  --bs-success: #15803D;
+  --bs-success-rgb: 21, 128, 61;
   --bs-danger: #DC2626;
   --bs-danger-rgb: 220, 38, 38;
   --bs-body-bg: #F4F6F8;
@@ -65,7 +65,6 @@ a { text-decoration: none; }
 
 .menu-ferramentas { display: flex; align-items: center; gap: 14px; margin-left: auto; }
 .navbar-toggler { border: none; font-size: 1.5rem; color: var(--bs-primary); padding: 4px 8px; }
-.navbar-toggler:focus { box-shadow: none; }
 
 .topbar-relogio { text-align: right; line-height: 1.2; white-space: nowrap; }
 #topbar-hora { font-size: 1.05rem; font-weight: 700; color: var(--bs-primary); display: block; }
@@ -93,18 +92,12 @@ a { text-decoration: none; }
 
 /* ---------- Cards ---------- */
 .card { border: none; border-radius: 1rem; box-shadow: var(--sombra-suave); transition: box-shadow 0.2s ease, transform 0.2s ease; }
-.card.card-hover:hover { box-shadow: var(--sombra-media); transform: translateY(-2px); }
 
 .icone-setor {
   width: 32px; height: 32px; border-radius: 0.6rem; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center; font-size: 1rem;
 }
 
-.bg-icone-primary { background: var(--azul-claro); color: var(--bs-primary); }
-.bg-icone-success { background: #dcfce7; color: var(--bs-success); }
-.bg-icone-warning { background: #fef3c7; color: #b45309; }
-.bg-icone-danger { background: #fee2e2; color: var(--bs-danger); }
-.bg-icone-info { background: #e0f2fe; color: #0369a1; }
 
 /* ---------- Avatar ---------- */
 .avatar-img { object-fit: cover; }
@@ -222,3 +215,18 @@ a { text-decoration: none; }
 
 .mais-informacoes > summary { cursor: pointer; font-weight: 600; color: var(--bs-primary); }
 .foto-escolher { cursor: pointer; }
+
+/* Botões seguem a cor da escola (Configurações). O Bootstrap traz o azul fixo. */
+.btn-primary {
+  --bs-btn-bg: var(--bs-primary); --bs-btn-border-color: var(--bs-primary);
+  --bs-btn-hover-bg: color-mix(in srgb, var(--bs-primary) 85%, #000);
+  --bs-btn-hover-border-color: color-mix(in srgb, var(--bs-primary) 85%, #000);
+  --bs-btn-active-bg: color-mix(in srgb, var(--bs-primary) 75%, #000);
+  --bs-btn-active-border-color: color-mix(in srgb, var(--bs-primary) 75%, #000);
+  --bs-btn-disabled-bg: var(--bs-primary); --bs-btn-disabled-border-color: var(--bs-primary);
+}
+.btn-outline-primary {
+  --bs-btn-color: var(--bs-primary); --bs-btn-border-color: var(--bs-primary);
+  --bs-btn-hover-bg: var(--bs-primary); --bs-btn-hover-border-color: var(--bs-primary);
+  --bs-btn-active-bg: var(--bs-primary); --bs-btn-active-border-color: var(--bs-primary);
+}

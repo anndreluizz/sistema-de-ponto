@@ -21,17 +21,17 @@
 
       <div class="row g-3">
         <div class="col-md-6">
-          <label class="form-label">Nome completo *</label>
-          <input type="text" name="nome" class="form-control" required value="{{ (funcionario.nome if funcionario else '') or '' }}">
+          <label class="form-label" for="campo-nome">Nome completo *</label>
+          <input id="campo-nome" type="text" name="nome" class="form-control" required value="{{ (funcionario.nome if funcionario else '') or '' }}">
         </div>
         <div class="col-md-6">
-          <label class="form-label">Cargo</label>
-          <input type="text" name="cargo" class="form-control" placeholder="Ex: Professora de Matemática" value="{{ (funcionario.cargo if funcionario else '') or '' }}">
+          <label class="form-label" for="campo-cargo">Cargo</label>
+          <input id="campo-cargo" type="text" name="cargo" class="form-control" placeholder="Ex: Professora de Matemática" value="{{ (funcionario.cargo if funcionario else '') or '' }}">
         </div>
 
         <div class="col-md-4">
-          <label class="form-label">Setor</label>
-          <select name="setor_id" class="form-select">
+          <label class="form-label" for="campo-setor-id">Setor</label>
+          <select id="campo-setor-id" name="setor_id" class="form-select">
             <option value="">Nenhum</option>
             {% for s in setores %}
               <option value="{{ s.id }}" {{ "selected" if funcionario and funcionario.setor_id == s.id else "" }}>{{ s.nome }}</option>
@@ -39,9 +39,9 @@
           </select>
         </div>
         <div class="col-md-4">
-          <label class="form-label">Categoria <span class="text-secondary small">(ordem na folha)</span></label>
+          <label class="form-label" for="campo-categoria">Categoria <span class="text-secondary small">(ordem na folha)</span></label>
           {% set categoria_atual = funcionario.categoria if funcionario else "" %}
-          <select name="categoria" class="form-select">
+          <select id="campo-categoria" name="categoria" class="form-select">
             <option value="" {{ "selected" if not categoria_atual else "" }}>Não informado</option>
             <option value="gestao" {{ "selected" if categoria_atual == "gestao" else "" }}>Gestão</option>
             <option value="apoio_pedagogico" {{ "selected" if categoria_atual == "apoio_pedagogico" else "" }}>Apoio Pedagógico</option>
@@ -50,18 +50,18 @@
           </select>
         </div>
         <div class="col-6 col-md-2">
-          <label class="form-label">Vínculo</label>
+          <label class="form-label" for="campo-vinculo">Vínculo</label>
           {% set vinculo_atual = funcionario.vinculo if funcionario else "" %}
-          <select name="vinculo" class="form-select">
+          <select id="campo-vinculo" name="vinculo" class="form-select">
             <option value="" {{ "selected" if not vinculo_atual else "" }}>—</option>
             <option value="efetivo" {{ "selected" if vinculo_atual == "efetivo" else "" }}>Efetivo</option>
             <option value="contratado" {{ "selected" if vinculo_atual == "contratado" else "" }}>Contratado</option>
           </select>
         </div>
         <div class="col-6 col-md-2">
-          <label class="form-label">Situação</label>
+          <label class="form-label" for="campo-situacao">Situação</label>
           {% set situacao_atual = funcionario.situacao if funcionario else "ativo" %}
-          <select name="situacao" class="form-select">
+          <select id="campo-situacao" name="situacao" class="form-select">
             <option value="ativo" {{ "selected" if situacao_atual == "ativo" else "" }}>Ativo</option>
             <option value="inativo" {{ "selected" if situacao_atual == "inativo" else "" }}>Inativo</option>
             <option value="ferias" {{ "selected" if situacao_atual == "ferias" else "" }}>Férias</option>
@@ -122,42 +122,42 @@
         <summary>Mais informações <span class="text-secondary small">(documentos, contato, datas)</span></summary>
         <div class="row g-3 mt-1">
           <div class="col-md-4">
-            <label class="form-label">CPF</label>
-            <input type="text" name="cpf" class="form-control" placeholder="000.000.000-00" value="{{ (funcionario.cpf if funcionario else '') or '' }}">
+            <label class="form-label" for="campo-cpf">CPF</label>
+            <input id="campo-cpf" type="text" name="cpf" class="form-control" placeholder="000.000.000-00" value="{{ (funcionario.cpf if funcionario else '') or '' }}">
           </div>
           <div class="col-md-4">
-            <label class="form-label">RG</label>
-            <input type="text" name="rg" class="form-control" value="{{ (funcionario.rg if funcionario else '') or '' }}">
+            <label class="form-label" for="campo-rg">RG</label>
+            <input id="campo-rg" type="text" name="rg" class="form-control" value="{{ (funcionario.rg if funcionario else '') or '' }}">
           </div>
           <div class="col-md-4">
-            <label class="form-label">Matrícula</label>
-            <input type="text" name="matricula" class="form-control" value="{{ (funcionario.matricula or '') if funcionario else matricula_sugerida }}">
+            <label class="form-label" for="campo-matricula">Matrícula</label>
+            <input id="campo-matricula" type="text" name="matricula" class="form-control" value="{{ (funcionario.matricula or '') if funcionario else matricula_sugerida }}">
           </div>
           <div class="col-md-4">
-            <label class="form-label">Telefone</label>
-            <input type="text" name="telefone" class="form-control" value="{{ (funcionario.telefone if funcionario else '') or '' }}">
+            <label class="form-label" for="campo-telefone">Telefone</label>
+            <input id="campo-telefone" type="text" name="telefone" class="form-control" value="{{ (funcionario.telefone if funcionario else '') or '' }}">
           </div>
           <div class="col-md-4">
-            <label class="form-label">E-mail</label>
-            <input type="email" name="email" class="form-control" value="{{ (funcionario.email if funcionario else '') or '' }}">
+            <label class="form-label" for="campo-email">E-mail</label>
+            <input id="campo-email" type="email" name="email" class="form-control" value="{{ (funcionario.email if funcionario else '') or '' }}">
           </div>
           {% if session.usuario_perfil == 'administrador' %}
             <div class="col-md-4">
-              <label class="form-label">Salário <span class="text-secondary small">(só Administrador vê)</span></label>
-              <input type="text" name="salario" class="form-control" placeholder="R$ 0,00" value="{{ (funcionario.salario if funcionario else '') or '' }}">
+              <label class="form-label" for="campo-salario">Salário <span class="text-secondary small">(só Administrador vê)</span></label>
+              <input id="campo-salario" type="text" name="salario" class="form-control" placeholder="R$ 0,00" value="{{ (funcionario.salario if funcionario else '') or '' }}">
             </div>
           {% endif %}
           <div class="col-md-4">
-            <label class="form-label">Data de admissão</label>
-            <input type="date" name="data_admissao" class="form-control" value="{{ (funcionario.data_admissao if funcionario else '') or '' }}">
+            <label class="form-label" for="campo-data-admissao">Data de admissão</label>
+            <input id="campo-data-admissao" type="date" name="data_admissao" class="form-control" value="{{ (funcionario.data_admissao if funcionario else '') or '' }}">
           </div>
           <div class="col-md-4">
-            <label class="form-label">Banco de horas a partir de <span class="text-secondary small">(vazio = não usa)</span></label>
-            <input type="date" name="banco_horas_inicio" class="form-control" value="{{ (funcionario.banco_horas_inicio if funcionario else '') or '' }}">
+            <label class="form-label" for="campo-banco-horas-inicio">Banco de horas a partir de <span class="text-secondary small">(vazio = não usa)</span></label>
+            <input id="campo-banco-horas-inicio" type="date" name="banco_horas_inicio" class="form-control" value="{{ (funcionario.banco_horas_inicio if funcionario else '') or '' }}">
           </div>
           <div class="col-12">
-            <label class="form-label">Observações</label>
-            <textarea name="observacoes" class="form-control" rows="2">{{ (funcionario.observacoes if funcionario else '') or '' }}</textarea>
+            <label class="form-label" for="campo-observacoes">Observações</label>
+            <textarea id="campo-observacoes" name="observacoes" class="form-control" rows="2">{{ (funcionario.observacoes if funcionario else '') or '' }}</textarea>
           </div>
         </div>
       </details>
@@ -205,12 +205,12 @@
               enctype="multipart/form-data" class="row g-2 align-items-end">
           {{ csrf_input() }}
           <div class="col-md-4">
-            <label class="form-label small mb-1">Arquivo (PDF, JPG, PNG ou WEBP)</label>
-            <input type="file" name="arquivo" class="form-control form-control-sm" accept=".pdf,.png,.jpg,.jpeg,.webp" required>
+            <label class="form-label small mb-1" for="campo-arquivo">Arquivo (PDF, JPG, PNG ou WEBP)</label>
+            <input id="campo-arquivo" type="file" name="arquivo" class="form-control form-control-sm" accept=".pdf,.png,.jpg,.jpeg,.webp" required>
           </div>
           <div class="col-md-4">
-            <label class="form-label small mb-1">Tipo (opcional)</label>
-            <input type="text" name="tipo" class="form-control form-control-sm" placeholder="Ex: RG, CTPS, Comprovante">
+            <label class="form-label small mb-1" for="campo-tipo">Tipo (opcional)</label>
+            <input id="campo-tipo" type="text" name="tipo" class="form-control form-control-sm" placeholder="Ex: RG, CTPS, Comprovante">
           </div>
           <div class="col-md-4">
             <button type="submit" class="btn btn-outline-primary btn-sm w-100"><i class="bi bi-paperclip me-1"></i>Anexar</button>

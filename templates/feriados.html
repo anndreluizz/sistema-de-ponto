@@ -2,6 +2,7 @@
 {% from "_macros.html" import csrf_input %}
 {% block titulo %}Feriados{% endblock %}
 {% block conteudo %}
+  <h1 class="h3 fw-bold mb-4">Feriados</h1>
   <div class="row g-4">
     <div class="col-lg-5">
       <div class="card">
@@ -10,12 +11,12 @@
           <form method="post" class="d-flex flex-column gap-2">
             {{ csrf_input() }}
             <div>
-              <label class="form-label small mb-1">Data</label>
-              <input type="date" name="data" class="form-control" required>
+              <label class="form-label small mb-1" for="campo-data">Data</label>
+              <input id="campo-data" type="date" name="data" class="form-control" required>
             </div>
             <div>
-              <label class="form-label small mb-1">Nome</label>
-              <input type="text" name="nome" class="form-control" placeholder="Ex: Independência do Brasil" required>
+              <label class="form-label small mb-1" for="campo-nome">Nome</label>
+              <input id="campo-nome" type="text" name="nome" class="form-control" placeholder="Ex: Independência do Brasil" required>
             </div>
             <button type="submit" class="btn btn-primary mt-1"><i class="bi bi-plus-lg me-1"></i>Adicionar</button>
           </form>

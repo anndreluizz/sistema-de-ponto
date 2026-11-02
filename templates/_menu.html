@@ -71,7 +71,7 @@
 
       {% if perfil in ('administrador', 'rh') %}
         <div class="dropdown">
-          <button class="topbar-conta dropdown-toggle position-relative" data-bs-toggle="dropdown" type="button" title="Avisos">
+          <button class="topbar-conta dropdown-toggle position-relative" data-bs-toggle="dropdown" type="button" title="Avisos" aria-label="Avisos">
             <i class="bi bi-bell"></i>
             {% if notificacoes %}
               <span class="badge rounded-pill bg-danger position-absolute top-0 start-100 translate-middle" style="font-size:0.6rem;">
@@ -96,7 +96,7 @@
       {% endif %}
 
       <div class="dropdown">
-        <button class="topbar-conta dropdown-toggle" data-bs-toggle="dropdown" type="button" title="Conta">
+        <button class="topbar-conta dropdown-toggle" data-bs-toggle="dropdown" type="button" title="Conta" aria-label="Conta">
           <i class="bi bi-person-circle"></i>
         </button>
         <ul class="dropdown-menu dropdown-menu-end">

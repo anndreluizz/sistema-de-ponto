@@ -2,6 +2,7 @@
 {% from "_macros.html" import csrf_input %}
 {% block titulo %}Setores{% endblock %}
 {% block conteudo %}
+  <h1 class="h3 fw-bold mb-4">Setores</h1>
   <div class="row g-4">
     <div class="col-lg-5">
       <div class="card">
@@ -12,8 +13,8 @@
             <input type="text" name="nome" class="form-control" placeholder="Nome do setor" required>
             <div class="row g-2">
               <div class="col-8">
-                <label class="form-label small mb-1">Ícone</label>
-                <select name="icone" class="form-select">
+                <label class="form-label small mb-1" for="campo-icone">Ícone</label>
+                <select id="campo-icone" name="icone" class="form-select">
                   <option value="">Nenhum</option>
                   {% for valor, rotulo in icones_disponiveis %}
                     <option value="{{ valor }}">{{ rotulo }}</option>
@@ -21,17 +22,17 @@
                 </select>
               </div>
               <div class="col-4">
-                <label class="form-label small mb-1">Cor</label>
-                <input type="color" name="cor" class="form-control form-control-color w-100" value="#1E40AF">
+                <label class="form-label small mb-1" for="campo-cor">Cor</label>
+                <input id="campo-cor" type="color" name="cor" class="form-control form-control-color w-100" value="#1E40AF">
               </div>
             </div>
             <div>
-              <label class="form-label small mb-1">Responsável</label>
-              <input type="text" name="responsavel" class="form-control" placeholder="Nome do responsável pelo setor">
+              <label class="form-label small mb-1" for="campo-responsavel">Responsável</label>
+              <input id="campo-responsavel" type="text" name="responsavel" class="form-control" placeholder="Nome do responsável pelo setor">
             </div>
             <div>
-              <label class="form-label small mb-1">Centro de custo</label>
-              <input type="text" name="centro_custo" class="form-control" placeholder="Opcional">
+              <label class="form-label small mb-1" for="campo-centro-custo">Centro de custo</label>
+              <input id="campo-centro-custo" type="text" name="centro_custo" class="form-control" placeholder="Opcional">
             </div>
             <button type="submit" class="btn btn-primary mt-1"><i class="bi bi-plus-lg me-1"></i>Adicionar</button>
           </form>

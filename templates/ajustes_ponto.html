@@ -25,7 +25,7 @@
         {% endif %}
         <a href="#" class="btn-duplicar-registro" data-funcionario-id="{{ funcionario_id }}" data-tipo="{{ tipo }}">usar como modelo</a>
         <form method="post" action="{{ url_for('excluir_registro', registro_id=registro.id) }}"
-              class="form-confirmar d-inline ms-auto" data-confirmar="Excluir esta {{ tipo }}?">
+              class="form-confirmar d-inline ms-auto" data-confirmar="Excluir esta {{ 'entrada' if tipo == 'entrada' else 'saída' }}?">
           {{ csrf_input() }}
           <button type="submit" class="btn btn-link btn-sm p-0 text-danger">excluir</button>
         </form>
@@ -83,19 +83,19 @@
         <p class="text-secondary small mb-3">O dia justificado deixa de contar como falta.</p>
         <div class="row g-2 align-items-end">
           <div class="col-md-4">
-            <label class="form-label small mb-1">Funcionário</label>
-            <select name="funcionario_id" class="form-select" required>
+            <label class="form-label small mb-1" for="campo-funcionario-id">Funcionário</label>
+            <select id="campo-funcionario-id" name="funcionario_id" class="form-select" required>
               <option value="" disabled selected>Selecione</option>
               {% for f in funcionarios %}<option value="{{ f.id }}">{{ f.nome }}</option>{% endfor %}
             </select>
           </div>
           <div class="col-6 col-md-2">
-            <label class="form-label small mb-1">Data</label>
-            <input type="date" name="data" class="form-control" required>
+            <label class="form-label small mb-1" for="campo-data">Data</label>
+            <input id="campo-data" type="date" name="data" class="form-control" required>
           </div>
           <div class="col-6 col-md-3">
-            <label class="form-label small mb-1">Motivo</label>
-            <select name="tipo" class="form-select" required>
+            <label class="form-label small mb-1" for="campo-tipo">Motivo</label>
+            <select id="campo-tipo" name="tipo" class="form-select" required>
               <option value="atestado">Atestado</option>
               <option value="licenca">Licença</option>
               <option value="ferias">Férias</option>
@@ -107,8 +107,8 @@
             </select>
           </div>
           <div class="col-md-3">
-            <label class="form-label small mb-1">Observação</label>
-            <input type="text" name="observacao" class="form-control" placeholder="Opcional">
+            <label class="form-label small mb-1" for="campo-observacao">Observação</label>
+            <input id="campo-observacao" type="text" name="observacao" class="form-control" placeholder="Opcional">
           </div>
         </div>
         <button type="submit" class="btn btn-primary mt-3">Justificar</button>
