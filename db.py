@@ -242,6 +242,12 @@ def _migrar_usuarios_seguranca(conn):
         conn.execute("ALTER TABLE usuarios ADD COLUMN tentativas_falhas INTEGER NOT NULL DEFAULT 0")
     if "bloqueado_ate" not in colunas:
         conn.execute("ALTER TABLE usuarios ADD COLUMN bloqueado_ate TEXT")
+    # Muda a cada troca de senha: sessões abertas antes (outro PC, cookie roubado) caem.
+    if "versao_sessao" not in colunas:
+        conn.execute("ALTER TABLE usuarios ADD COLUMN versao_sessao INTEGER NOT NULL DEFAULT 0")
+    # Senha definida pelo admin (reset): a pessoa precisa trocar no próximo login.
+    if "senha_provisoria" not in colunas:
+        conn.execute("ALTER TABLE usuarios ADD COLUMN senha_provisoria INTEGER NOT NULL DEFAULT 0")
     conn.commit()
 
 

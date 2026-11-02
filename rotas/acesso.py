@@ -1,6 +1,8 @@
 """Login, logout, troca de senha e painel inicial."""
 
+import re
 from datetime import date, datetime, timedelta
+from urllib.parse import urlsplit
 from flask import flash, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
 import db
@@ -207,16 +209,20 @@ def login():
                 conn.commit()
                 session.clear()
                 session.permanent = True
-                if senha == db.ADMIN_PADRAO_SENHA:
+                if senha == db.ADMIN_PADRAO_SENHA or registro["senha_provisoria"]:
                     session["senha_padrao"] = True
+                session["versao_sessao"] = registro["versao_sessao"]
                 session["usuario_id"] = registro["id"]
                 session["usuario_login"] = registro["usuario"]
                 session["usuario_nome"] = registro["nome"] or registro["usuario"]
                 session["usuario_perfil"] = registro["perfil"]
                 registrar_auditoria(conn, "login_sucesso", "usuario", registro["id"])
+                # Só caminhos internos. O navegador ignora TAB/quebra de linha e trata "\" como "/",
+                # então "/%09/site" ou "/\site" virariam outro domínio: com esses caracteres, recusa.
                 proximo = request.args.get("proximo") or ""
-                # Só caminhos internos: "//site" ou "/\site" o navegador trata como outro domínio.
-                if not proximo.startswith("/") or proximo[1:2] in ("/", "\\"):
+                partes = urlsplit(proximo)
+                if (not proximo.startswith("/") or proximo.startswith("//") or partes.scheme or partes.netloc
+                        or re.search(r"[\x00-\x1f\\]", proximo)):
                     proximo = url_for("dashboard")
                 return redirect(proximo)
 
@@ -288,16 +294,21 @@ def trocar_senha():
                 flash("Senha atual incorreta.", "erro")
             elif len(nova_senha) < 6:
                 flash("A nova senha precisa ter pelo menos 6 caracteres.", "erro")
-            elif nova_senha == db.ADMIN_PADRAO_SENHA:
-                flash("Escolha uma senha diferente da senha padrão.", "erro")
+            elif nova_senha == db.ADMIN_PADRAO_SENHA or nova_senha == senha_atual:
+                flash("Escolha uma senha nova, diferente da atual e da senha padrão.", "erro")
             elif nova_senha != confirmar_senha:
                 flash("A confirmação não corresponde à nova senha.", "erro")
             else:
                 conn.execute(
-                    "UPDATE usuarios SET senha_hash = ? WHERE id = ?",
+                    """UPDATE usuarios SET senha_hash = ?, senha_provisoria = 0, versao_sessao = versao_sessao + 1
+                       WHERE id = ?""",
                     (generate_password_hash(nova_senha), session["usuario_id"]),
                 )
                 conn.commit()
+                # Esta sessão continua; as outras (outros aparelhos) caem.
+                session["versao_sessao"] = conn.execute(
+                    "SELECT versao_sessao FROM usuarios WHERE id = ?", (session["usuario_id"],)
+                ).fetchone()["versao_sessao"]
                 registrar_auditoria(conn, "trocar_senha", "usuario", session["usuario_id"])
                 session.pop("senha_padrao", None)
                 flash("Senha alterada com sucesso.", "sucesso")

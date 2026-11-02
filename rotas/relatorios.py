@@ -273,13 +273,19 @@ def exportar_csv():
 
     saida = io.StringIO()
     escritor = csv.writer(saida, delimiter=";")
+
+    def texto(valor):
+        # No CSV o Excel executa o que começa com = + - @ como fórmula.
+        valor = "" if valor is None else str(valor)
+        return "'" + valor if valor[:1] in ("=", "+", "-", "@", "\t", "\r") else valor
+
     escritor.writerow(["Funcionario", "Cargo", "Data", "Hora", "Tipo", "Lancado manualmente"])
     for r in registros:
         data_hora = datetime.strptime(r["timestamp"], "%Y-%m-%d %H:%M:%S")
         escritor.writerow(
             [
-                r["funcionario_nome"],
-                r["cargo"],
+                texto(r["funcionario_nome"]),
+                texto(r["cargo"]),
                 data_hora.strftime("%d/%m/%Y"),
                 data_hora.strftime("%H:%M:%S"),
                 "Entrada" if r["tipo"] == "entrada" else "Saida",

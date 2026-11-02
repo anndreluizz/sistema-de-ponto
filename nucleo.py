@@ -300,6 +300,21 @@ def filtro_cor_avatar(nome):
     return CORES_AVATAR[indice]
 
 
+@app.after_request
+def cabecalhos_de_seguranca(resposta):
+    resposta.headers.setdefault("X-Content-Type-Options", "nosniff")
+    resposta.headers.setdefault("X-Frame-Options", "DENY")
+    resposta.headers.setdefault("Referrer-Policy", "same-origin")
+    # Tudo é servido pelo próprio sistema (sem CDN); os scripts/estilos inline das telas continuam.
+    resposta.headers.setdefault(
+        "Content-Security-Policy",
+        "default-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; "
+        "script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; "
+        "object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+    )
+    return resposta
+
+
 @app.errorhandler(413)
 def erro_arquivo_grande(erro):
     flash("Arquivo muito grande. O limite é 100 MB.", "erro")
@@ -316,12 +331,16 @@ def login_obrigatorio(f):
         conn = db.get_db()
         try:
             usuario = conn.execute(
-                "SELECT perfil FROM usuarios WHERE id = ? AND ativo = 1", (session["usuario_id"],)
+                "SELECT perfil, versao_sessao FROM usuarios WHERE id = ? AND ativo = 1", (session["usuario_id"],)
             ).fetchone()
         finally:
             conn.close()
         if not usuario:
             session.clear()
+            return redirect(url_for("login"))
+        if session.get("versao_sessao", 0) != usuario["versao_sessao"]:
+            session.clear()
+            flash("Sua senha foi alterada. Entre de novo.", "erro")
             return redirect(url_for("login"))
         session["usuario_perfil"] = usuario["perfil"]
         if session.get("senha_padrao") and request.endpoint not in ("trocar_senha", "logout"):

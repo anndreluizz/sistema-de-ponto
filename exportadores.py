@@ -136,6 +136,15 @@ def gerar_pdf_espelho(cabecalho, funcionario, mes_rotulo, colunas, linhas_tabela
     return bytes(pdf.output())
 
 
+def _sem_formulas(ws):
+    """Texto que começa com '=' o openpyxl grava como fórmula: um nome cadastrado como
+    '=HYPERLINK(...)' viraria link/fórmula ao abrir. Força tudo a ser texto."""
+    for linha in ws.iter_rows():
+        for celula in linha:
+            if isinstance(celula.value, str) and celula.value.startswith("="):
+                celula.data_type = "s"
+
+
 def gerar_excel_tabela(cabecalho, titulo, subtitulo, colunas, linhas):
     wb = Workbook()
     ws = wb.active
@@ -173,6 +182,7 @@ def gerar_excel_tabela(cabecalho, titulo, subtitulo, colunas, linhas):
     for indice in range(1, len(colunas) + 1):
         ws.column_dimensions[get_column_letter(indice)].width = 20
 
+    _sem_formulas(ws)
     saida = BytesIO()
     wb.save(saida)
     return saida.getvalue()
@@ -321,6 +331,7 @@ def gerar_excel_folha_ponto(cabecalho, titulo, subtitulo, ultimo_dia, dias_seman
         ws.cell(row=linha_atual, column=1, value=f"{codigo} = {nome_codigo}").font = Font(size=9, color="666666")
         linha_atual += 1
 
+    _sem_formulas(ws)
     saida = BytesIO()
     wb.save(saida)
     return saida.getvalue()

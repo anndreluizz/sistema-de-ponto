@@ -60,10 +60,15 @@ def processar_logo_upload(arquivo):
     return "uploads/logo.png"
 
 
+TAMANHO_MAX_BACKUP_DESCOMPACTADO = 2 * 1024**3  # 2 GB: bem acima de uma escola, abaixo de um "zip bomba"
+
+
 def validar_backup_zip(caminho_zip):
     if not zipfile.is_zipfile(caminho_zip):
         raise ValueError("O arquivo enviado não é um .zip válido.")
     with zipfile.ZipFile(caminho_zip) as zf:
+        if sum(info.file_size for info in zf.infolist()) > TAMANHO_MAX_BACKUP_DESCOMPACTADO:
+            raise ValueError("O backup é grande demais para ser deste sistema.")
         if "ponto.db" not in zf.namelist():
             raise ValueError("O .zip não contém ponto.db — não parece ser um backup deste sistema.")
         with tempfile.TemporaryDirectory() as pasta_tmp:
@@ -109,6 +114,9 @@ def extrair_arquivos_backup(caminho_zip):
                 if not nome.startswith(prefixo) or nome.endswith("/"):
                     continue
                 nome_relativo = nome[len(prefixo):]
+                # static/uploads é servida sem login: lá só entra imagem (o logo), nunca .html/.js.
+                if prefixo == "static/uploads/" and Path(nome_relativo).suffix.lower().lstrip(".") not in EXTENSOES_IMAGEM_PERMITIDAS:
+                    continue
                 destino = _caminho_seguro_dentro_de(pasta_destino, nome_relativo)
                 if destino is None:
                     continue
@@ -365,15 +373,18 @@ def resetar_senha_usuario(usuario_id):
     try:
         conn.execute(
             """UPDATE usuarios
-               SET senha_hash = ?, tentativas_falhas = 0, bloqueado_ate = NULL
+               SET senha_hash = ?, tentativas_falhas = 0, bloqueado_ate = NULL,
+                   senha_provisoria = 1, versao_sessao = versao_sessao + 1
                WHERE id = ?""",
             (generate_password_hash(nova_senha), usuario_id),
         )
+        conn.execute("DELETE FROM bloqueios_login WHERE usuario = (SELECT usuario FROM usuarios WHERE id = ?)",
+                     (usuario_id,))
         conn.commit()
         registrar_auditoria(conn, "resetar_senha", "usuario", usuario_id)
     finally:
         conn.close()
-    flash("Senha redefinida.", "sucesso")
+    flash("Senha redefinida. A pessoa vai precisar trocá-la no próximo login.", "sucesso")
     return redirect(url_for("usuarios"))
 
 

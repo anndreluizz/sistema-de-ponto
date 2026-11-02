@@ -229,7 +229,7 @@ def test_api_bater_ponto_aceita_aparelho_autorizado_por_admin(cliente):
 
 def test_login_ignora_redirecionamento_para_outro_site(cliente):
     _criar_usuario("admin_redir", "SenhaForte123!", "administrador")
-    for destino in ("//site-falso.com/login", r"/\site-falso.com", "http://site-falso.com"):
+    for destino in ("//site-falso.com/login", r"/\site-falso.com", "http://site-falso.com", "/%09/site-falso.com"):
         cliente.get("/admin/logout")
         token = _csrf_token(cliente.get("/admin/login").get_data(as_text=True))
         resposta = cliente.post(
@@ -548,3 +548,76 @@ def test_bloqueio_de_login_e_por_aparelho(cliente):
     resposta_outro_aparelho = tentar("SenhaForte123!", "10.0.0.10")
     assert resposta_outro_aparelho.status_code == 302
     assert "/admin/dashboard" in resposta_outro_aparelho.headers["Location"]
+
+
+# --- Itens menores da auditoria de segurança ----------------------------------
+
+
+def test_trocar_senha_derruba_sessao_de_outro_aparelho(cliente):
+    import app as app_module
+
+    _criar_usuario("admin_teste", "SenhaForte123!", "administrador")
+    outro_aparelho = app_module.app.test_client()
+    _login(outro_aparelho, "admin_teste", "SenhaForte123!")
+    _login(cliente, "admin_teste", "SenhaForte123!")
+    assert outro_aparelho.get("/admin/dashboard").status_code == 200
+
+    token = _csrf_token(cliente.get("/admin/senha").get_data(as_text=True))
+    cliente.post("/admin/senha", data={"csrf_token": token, "senha_atual": "SenhaForte123!",
+                                       "nova_senha": "OutraSenha!9", "confirmar_senha": "OutraSenha!9"})
+    assert cliente.get("/admin/dashboard").status_code == 200  # quem trocou continua
+    resposta = outro_aparelho.get("/admin/dashboard")
+    assert resposta.status_code == 302 and "/admin/login" in resposta.headers["Location"]
+
+
+def test_senha_resetada_pelo_admin_obriga_troca(cliente):
+    import app as app_module
+
+    _criar_usuario("admin_teste", "SenhaForte123!", "administrador")
+    _criar_usuario("rh_teste", "SenhaForte123!", "rh")
+    _login(cliente, "admin_teste", "SenhaForte123!")
+    conexao = db_module.get_db()
+    rh_id = conexao.execute("SELECT id FROM usuarios WHERE usuario = 'rh_teste'").fetchone()["id"]
+    conexao.close()
+    token = _csrf_token(cliente.get(f"/admin/usuarios/{rh_id}/editar").get_data(as_text=True))
+    cliente.post(f"/admin/usuarios/{rh_id}/resetar-senha", data={"csrf_token": token, "nova_senha": "Provisoria1"})
+
+    rh = app_module.app.test_client()
+    _login(rh, "rh_teste", "Provisoria1")
+    resposta = rh.get("/admin/funcionarios")
+    assert resposta.status_code == 302 and "/admin/senha" in resposta.headers["Location"]
+
+
+def test_csv_neutraliza_formula_no_nome(cliente):
+    _criar_usuario("admin_teste", "SenhaForte123!", "administrador")
+    _login(cliente, "admin_teste", "SenhaForte123!")
+    conexao = db_module.get_db()
+    fid = conexao.execute(
+        "INSERT INTO funcionarios (nome, codigo, situacao) VALUES ('=HYPERLINK(\"x\")', 'FFF111', 'ativo')"
+    ).lastrowid
+    conexao.execute("INSERT INTO registros (funcionario_id, tipo, timestamp) VALUES (?, 'entrada', '2026-10-05 07:00:00')", (fid,))
+    conexao.commit()
+    conexao.close()
+    csv = cliente.get("/admin/relatorios/exportar.csv?data_inicio=2026-10-01&data_fim=2026-10-31").get_data(as_text=True)
+    assert "'=HYPERLINK" in csv
+
+
+def test_paginas_tem_cabecalhos_de_seguranca(cliente):
+    resposta = cliente.get("/admin/login")
+    assert resposta.headers["X-Frame-Options"] == "DENY"
+    assert resposta.headers["X-Content-Type-Options"] == "nosniff"
+    assert "frame-ancestors 'none'" in resposta.headers["Content-Security-Policy"]
+
+
+def test_restaurar_nao_poe_html_na_pasta_publica(cliente, tmp_path):
+    import zipfile
+    import nucleo
+    from rotas.sistema import extrair_arquivos_backup
+
+    caminho = tmp_path / "b.zip"
+    with zipfile.ZipFile(caminho, "w") as zf:
+        zf.writestr("static/uploads/logo.png", b"png")
+        zf.writestr("static/uploads/pagina.html", b"<script>alert(1)</script>")
+    extrair_arquivos_backup(caminho)
+    assert (nucleo.UPLOADS_DIR / "logo.png").exists()
+    assert not (nucleo.UPLOADS_DIR / "pagina.html").exists()
