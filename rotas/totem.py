@@ -13,6 +13,7 @@ from nucleo import (
     COOKIE_TOTEM,
     COOLDOWN_SEGUNDOS,
     PERFIS_GESTAO,
+    PERFIS_LEITURA,
     PERFIS_SOMENTE_ADMIN,
     TAMANHO_MAX_FOTO_BATIDA,
     _caminho_foto_batida,
@@ -63,6 +64,7 @@ def autorizar_totem():
 
 @app.route("/admin/arquivos/<pasta>/<nome>")
 @login_obrigatorio
+@perfil_obrigatorio(*PERFIS_LEITURA)  # o QR Code bate ponto: o perfil Consulta não pode baixá-lo
 def arquivo_privado(pasta, nome):
     pastas = {"fotos": nucleo.FOTOS_DIR, "qrcodes": nucleo.QRCODES_DIR}
     if pasta not in pastas:

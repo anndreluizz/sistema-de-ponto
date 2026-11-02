@@ -455,3 +455,13 @@ def test_editar_funcionario_sem_email_nao_mostra_none(cliente):
     html = cliente.get(f"/admin/funcionarios/{funcionario_id}/editar").get_data(as_text=True)
     assert 'value="None"' not in html
     assert ">None</textarea>" not in html
+
+
+def test_consulta_nao_baixa_qrcode_nem_foto(cliente):
+    # Com o QR Code de um colega, alguém do perfil Consulta bateria o ponto por ele.
+    _criar_usuario("consulta_teste", "SenhaForte123!", "consulta")
+    _login(cliente, "consulta_teste", "SenhaForte123!")
+    for pasta in ("qrcodes", "fotos"):
+        resposta = cliente.get(f"/admin/arquivos/{pasta}/1.png")
+        assert resposta.status_code == 302
+        assert resposta.headers["Location"].endswith("/admin/dashboard")
