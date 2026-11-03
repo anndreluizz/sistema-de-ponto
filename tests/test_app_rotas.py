@@ -651,3 +651,43 @@ def test_cookie_de_totem_inventado_nao_bate(cliente):
     _criar_funcionario("TOT2")
     cliente.set_cookie("totem_autorizado", "qualquer-coisa")
     assert cliente.post("/api/bater-ponto", json={"codigo": "TOT2"}).status_code == 403
+
+
+# --- Aviso de backup fora do PC ----------------------------------------------
+
+
+def test_aviso_backup_fora_do_pc(cliente, tmp_path, monkeypatch):
+    from datetime import datetime
+
+    import nucleo
+
+    def aviso(destino):
+        conexao = db_module.get_db()
+        conexao.execute("UPDATE configuracoes SET backup_pasta_destino = ? WHERE id = 1", (destino,))
+        conexao.commit()
+        try:
+            return nucleo.aviso_backup_fora(conexao)
+        finally:
+            conexao.close()
+
+    assert "só neste computador" in aviso(None)
+    assert "não está acessível" in aviso(str(tmp_path / "pendrive_ausente"))
+    mesmo_disco = tmp_path / "copias"
+    mesmo_disco.mkdir()
+    monkeypatch.setattr(nucleo, "BASE_DIR", tmp_path)  # no CI o código e o tmp ficam em discos diferentes
+    assert "mesmo disco" in aviso(str(mesmo_disco))
+
+    nuvem = tmp_path / "OneDrive" / "ponto"
+    nuvem.mkdir(parents=True)
+    assert aviso(str(nuvem)) is None  # ainda sem nenhum backup local: nada a cobrar
+    nucleo.BACKUPS_AUTO_DIR.mkdir(parents=True, exist_ok=True)
+    (nucleo.BACKUPS_AUTO_DIR / "auto-20200101-000000.zip").write_bytes(b"x")
+    (nuvem / "auto-20200101-000000.zip").write_bytes(b"x")
+    assert "Nenhuma cópia recente" in aviso(str(nuvem))
+    (nuvem / f"auto-{datetime.now():%Y%m%d-%H%M%S}.zip").write_bytes(b"x")
+    assert aviso(str(nuvem)) is None
+
+    aviso(None)
+    _criar_usuario("admin_bkp", "SenhaForte123!", "administrador")
+    _login(cliente, "admin_bkp", "SenhaForte123!")
+    assert "só neste computador" in cliente.get("/admin/dashboard").get_data(as_text=True)

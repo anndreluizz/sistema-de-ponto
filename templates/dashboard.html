@@ -9,6 +9,14 @@
   <h1 class="h3 fw-bold mb-1">Hoje</h1>
   <p class="text-secondary mb-4">{{ i.total_ativos }} funcionários ativos</p>
 
+  {% if aviso_backup %}
+    <div class="alert alert-warning d-flex flex-wrap align-items-center gap-2 mb-4" role="alert">
+      <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>
+      <span class="flex-grow-1">{{ aviso_backup }}</span>
+      <a href="{{ url_for('configuracoes') }}" class="btn btn-sm btn-outline-dark">Configurar backup</a>
+    </div>
+  {% endif %}
+
   <div class="painel-numeros mb-3">
     <div class="painel-numero">
       <span class="painel-valor text-success">{{ i.presentes|length }}</span>
