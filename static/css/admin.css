@@ -236,7 +236,7 @@ a { text-decoration: none; }
   --bs-btn-active-bg: var(--bs-primary); --bs-btn-active-border-color: var(--bs-primary);
 }
 
-/* ---------- Animações (só CSS; somem para quem pede menos movimento no sistema) ---------- */
+/* ---------- Animações (rodam sempre, mesmo com 'reduzir movimento' no sistema: pedido do dono) ---------- */
 @keyframes entrar-subindo { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @keyframes surgir { from { opacity: 0; transform: translateY(-4px) scale(0.98); } to { opacity: 1; transform: none; } }
 
@@ -265,6 +265,3 @@ main .card[data-aos][data-aos].aos-animate { transform: none; }
 .menu-links .nav-link { transition: color 0.15s ease, border-color 0.2s ease; }
 .form-control, .form-select { transition: border-color 0.15s ease, box-shadow 0.2s ease; }
 
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation: none !important; transition: none !important; }
-}
