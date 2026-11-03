@@ -236,6 +236,23 @@ def _migrar_bloqueios_login(conn):
     conn.commit()
 
 
+def _migrar_totens(conn):
+    """Um token aleatório por aparelho (só o hash fica no banco): dá pra revogar um totem
+    perdido sem derrubar os outros. Substitui o cookie antigo derivado da secret_key."""
+    conn.execute(
+        """CREATE TABLE IF NOT EXISTS totens (
+               id INTEGER PRIMARY KEY AUTOINCREMENT,
+               token_hash TEXT NOT NULL UNIQUE,
+               nome TEXT NOT NULL,
+               autorizado_por TEXT,
+               criado_em TEXT NOT NULL,
+               ultimo_uso TEXT,
+               revogado_em TEXT
+           )"""
+    )
+    conn.commit()
+
+
 def _migrar_usuarios_seguranca(conn):
     colunas = _colunas_existentes(conn, "usuarios")
     if "tentativas_falhas" not in colunas:
@@ -495,6 +512,7 @@ def init_db():
         _migrar_usuarios(conn)
         _migrar_usuarios_seguranca(conn)
         _migrar_bloqueios_login(conn)
+        _migrar_totens(conn)
         _criar_travas_mes_fechado(conn)  # por último: _migrar_ausencias_tipos recria a tabela
     finally:
         conn.close()

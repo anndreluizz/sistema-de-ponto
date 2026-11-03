@@ -1,5 +1,6 @@
 # Ambiente virtual Python (recriado pelo iniciar.bat)
 venv/
+.venv/
 
 # Banco de dados real e backups — contém dados pessoais reais dos funcionários
 # (CPF, RG, salário, telefone, e-mail, endereço de documentos)

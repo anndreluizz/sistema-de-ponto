@@ -203,7 +203,8 @@ def configuracoes():
             return redirect(url_for("configuracoes"))
 
         config = conn.execute("SELECT * FROM configuracoes WHERE id = 1").fetchone()
-        return render_template("configuracoes.html", config=config)
+        totens = conn.execute("SELECT * FROM totens ORDER BY revogado_em IS NOT NULL, id DESC").fetchall()
+        return render_template("configuracoes.html", config=config, totens=totens)
     finally:
         conn.close()
 

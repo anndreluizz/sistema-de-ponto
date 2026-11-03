@@ -621,3 +621,33 @@ def test_restaurar_nao_poe_html_na_pasta_publica(cliente, tmp_path):
     extrair_arquivos_backup(caminho)
     assert (nucleo.UPLOADS_DIR / "logo.png").exists()
     assert not (nucleo.UPLOADS_DIR / "pagina.html").exists()
+
+
+def test_totem_revogado_para_de_bater_e_outro_continua(cliente):
+    _criar_funcionario("TOT1")
+    _autorizar_totem(cliente, "admin_totem")
+    cookie_1 = cliente.get_cookie("totem_autorizado").value
+    token = _csrf_token(cliente.get("/admin/configuracoes").get_data(as_text=True))
+    cliente.post("/admin/totem/autorizar", data={"csrf_token": token, "nome": "Tablet 2"})
+    cookie_2 = cliente.get_cookie("totem_autorizado").value
+    assert cookie_1 != cookie_2
+    assert _contar(f"SELECT COUNT(*) FROM totens WHERE token_hash = '{cookie_1}'") == 0  # só o hash
+
+    cliente.set_cookie("totem_autorizado", cookie_1)
+    assert cliente.post("/api/bater-ponto", json={"codigo": "TOT1"}).status_code == 200
+    assert _contar("SELECT COUNT(*) FROM totens WHERE ultimo_uso IS NOT NULL") == 1
+
+    token = _csrf_token(cliente.get("/admin/configuracoes").get_data(as_text=True))
+    cliente.post("/admin/totem/1/revogar", data={"csrf_token": token})
+
+    resposta = cliente.post("/api/bater-ponto", json={"codigo": "TOT1"})
+    assert resposta.status_code == 403 and "não está autorizado" in resposta.get_json()["erro"]
+    assert "Revogado" in cliente.get("/admin/configuracoes").get_data(as_text=True)
+    cliente.set_cookie("totem_autorizado", cookie_2)  # o outro aparelho segue valendo
+    assert cliente.post("/api/bater-ponto", json={"codigo": "TOT1"}).status_code == 429  # cooldown, não 403
+
+
+def test_cookie_de_totem_inventado_nao_bate(cliente):
+    _criar_funcionario("TOT2")
+    cliente.set_cookie("totem_autorizado", "qualquer-coisa")
+    assert cliente.post("/api/bater-ponto", json={"codigo": "TOT2"}).status_code == 403

@@ -106,10 +106,43 @@
         tablet/computador do totem</strong> e clique no botão abaixo. A autorização fica salva
         nesse aparelho (não precisa repetir, a menos que o navegador seja limpo).
       </p>
-      <form method="post" action="{{ url_for('autorizar_totem') }}">
+      <form method="post" action="{{ url_for('autorizar_totem') }}" class="row g-2 align-items-end">
         {{ csrf_input() }}
-        <button type="submit" class="btn btn-outline-primary"><i class="bi bi-tablet me-1"></i>Autorizar este aparelho como totem</button>
+        <div class="col-sm-6">
+          <label for="campo-nome-totem" class="form-label small">Nome do aparelho (opcional)</label>
+          <input id="campo-nome-totem" type="text" name="nome" class="form-control" maxlength="60"
+                 placeholder="Ex.: Tablet da entrada">
+        </div>
+        <div class="col-sm-auto">
+          <button type="submit" class="btn btn-outline-primary"><i class="bi bi-tablet me-1"></i>Autorizar este aparelho como totem</button>
+        </div>
       </form>
+
+      {% if totens %}
+      <h3 class="h6 fw-bold mt-4 mb-2">Aparelhos autorizados</h3>
+      <p class="text-secondary small mb-2">Perdeu ou trocou um aparelho? Revogue: ele para de bater ponto na hora.</p>
+      <ul class="list-group">
+        {% for t in totens %}
+        <li class="list-group-item d-flex flex-wrap justify-content-between align-items-center gap-2">
+          <div>
+            <strong>{{ t.nome }}</strong>
+            {% if t.revogado_em %}<span class="badge text-bg-secondary ms-1">Revogado</span>{% endif %}
+            <div class="small text-secondary">
+              Autorizado em {{ t.criado_em[:16] }}{% if t.autorizado_por %} por {{ t.autorizado_por }}{% endif %}
+              · último uso: {{ t.ultimo_uso[:16] if t.ultimo_uso else "nunca" }}
+              {% if t.revogado_em %} · revogado em {{ t.revogado_em[:16] }}{% endif %}
+            </div>
+          </div>
+          {% if not t.revogado_em %}
+          <form method="post" action="{{ url_for('revogar_totem', totem_id=t.id) }}">
+            {{ csrf_input() }}
+            <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-x-circle me-1"></i>Revogar</button>
+          </form>
+          {% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+      {% endif %}
     </div>
   </div>
   {% endif %}

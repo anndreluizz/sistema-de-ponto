@@ -23,7 +23,7 @@ Ele roda **no computador da escola, sem internet**, porque no interior do Amazon
 **Totem**
 - Leitura do crachá pela câmera (QR Code), alternando sozinho entre entrada e saída
 - Foto no momento da batida, para conferência
-- Só aparelhos autorizados funcionam como totem. Isso impede que alguém bata o ponto pelo celular usando a foto de um crachá
+- Só aparelhos autorizados funcionam como totem. Isso impede que alguém bata o ponto pelo celular usando a foto de um crachá. Cada aparelho tem a própria chave, e um tablet perdido pode ser revogado em Configurações sem afetar os outros
 - Funciona num tablet pela rede Wi-Fi da escola
 
 **Gestão**

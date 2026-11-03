@@ -2,10 +2,12 @@
 
 import base64
 import hashlib
-import hmac
+import secrets
 from datetime import datetime
 from pathlib import Path
-from flask import abort, jsonify, redirect, render_template, request, send_file, send_from_directory, url_for
+from flask import (
+    abort, flash, jsonify, redirect, render_template, request, send_file, send_from_directory, session, url_for,
+)
 import db
 
 import nucleo
@@ -36,30 +38,67 @@ def kiosk():
     return render_template("kiosk.html", config=config, totem_autorizado=totem_autorizado())
 
 
-def _token_totem():
-    # ponytail: token derivado da secret_key — revogar um totem perdido exige apagar .secret_key
-    # (desloga todos e invalida todos os totens); tabela de totens se precisar revogar um só.
-    return hmac.new(app.config["SECRET_KEY"].encode(), b"totem", hashlib.sha256).hexdigest()
+def _hash_token(token):
+    return hashlib.sha256(token.encode()).hexdigest()
 
 
 def totem_autorizado():
-    return hmac.compare_digest(request.cookies.get(COOKIE_TOTEM, ""), _token_totem())
+    """Id do totem deste aparelho, ou None. Só o hash do token fica no banco; revogado = fora."""
+    token = request.cookies.get(COOKIE_TOTEM, "")
+    if not token:
+        return None
+    conn = db.get_db()
+    try:
+        linha = conn.execute(
+            "SELECT id FROM totens WHERE token_hash = ? AND revogado_em IS NULL", (_hash_token(token),)
+        ).fetchone()
+    finally:
+        conn.close()
+    return linha["id"] if linha else None
 
 
 @app.route("/admin/totem/autorizar", methods=["POST"])
 @login_obrigatorio
 @perfil_obrigatorio(*PERFIS_SOMENTE_ADMIN)
 def autorizar_totem():
+    token = secrets.token_urlsafe(32)
+    agora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    nome = request.form.get("nome", "").strip()[:60] or f"Totem de {agora[:10]}"
     conn = db.get_db()
     try:
-        registrar_auditoria(conn, "autorizar_totem", "totem", detalhes=f"ip={request.remote_addr}")
+        cursor = conn.execute(
+            "INSERT INTO totens (token_hash, nome, autorizado_por, criado_em) VALUES (?, ?, ?, ?)",
+            (_hash_token(token), nome, session.get("usuario_login"), agora),
+        )
+        conn.commit()
+        registrar_auditoria(
+            conn, "autorizar_totem", "totem", cursor.lastrowid, f"nome={nome}; ip={request.remote_addr}"
+        )
     finally:
         conn.close()
     resposta = redirect(url_for("kiosk"))
-    resposta.set_cookie(
-        COOKIE_TOTEM, _token_totem(), max_age=10 * 365 * 24 * 3600, httponly=True, samesite="Lax"
-    )
+    # Longo de propósito: o tablet não pode "deslogar" sozinho. Revogação é pela tabela.
+    resposta.set_cookie(COOKIE_TOTEM, token, max_age=10 * 365 * 24 * 3600, httponly=True, samesite="Lax")
     return resposta
+
+
+@app.route("/admin/totem/<int:totem_id>/revogar", methods=["POST"])
+@login_obrigatorio
+@perfil_obrigatorio(*PERFIS_SOMENTE_ADMIN)
+def revogar_totem(totem_id):
+    conn = db.get_db()
+    try:
+        alterou = conn.execute(
+            "UPDATE totens SET revogado_em = ? WHERE id = ? AND revogado_em IS NULL",
+            (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), totem_id),
+        ).rowcount
+        conn.commit()
+        if alterou:
+            registrar_auditoria(conn, "revogar_totem", "totem", totem_id)
+            flash("Totem revogado. Aquele aparelho não bate mais ponto.", "sucesso")
+    finally:
+        conn.close()
+    return redirect(url_for("configuracoes"))
 
 
 @app.route("/admin/arquivos/<pasta>/<nome>")
@@ -114,7 +153,8 @@ def foto_batida(registro_id):
 @app.route("/api/bater-ponto", methods=["POST"])
 @csrf.exempt
 def api_bater_ponto():
-    if not totem_autorizado():
+    totem_id = totem_autorizado()
+    if not totem_id:
         return jsonify({"ok": False, "erro": "Este aparelho não está autorizado como totem."}), 403
     dados = request.get_json(silent=True) or {}
     codigo = (dados.get("codigo") or "").strip()
@@ -123,6 +163,11 @@ def api_bater_ponto():
 
     conn = db.get_db()
     try:
+        conn.execute(
+            "UPDATE totens SET ultimo_uso = ? WHERE id = ?",
+            (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), totem_id),
+        )
+        conn.commit()
         funcionario = conn.execute("SELECT * FROM funcionarios WHERE codigo = ?", (codigo,)).fetchone()
         if not funcionario:
             return jsonify({"ok": False, "erro": "Crachá não reconhecido."}), 404
