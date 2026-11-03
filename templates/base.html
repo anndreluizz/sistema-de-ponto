@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap/bootstrap.min.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap-icons/bootstrap-icons.min.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='vendor/inter/fonts.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/aos/aos.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
   {% if cor_primaria %}
   <style>
@@ -74,6 +75,9 @@
   <script src="{{ url_for('static', filename='vendor/bootstrap/bootstrap.bundle.min.js') }}"></script>
   <script src="{{ url_for('static', filename='js/app.js') }}"></script>
   <script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+  <script src="{{ url_for('static', filename='vendor/aos/aos.js') }}"></script>
+  <script src="{{ url_for('static', filename='vendor/countup/countUp.umd.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/animacoes.js') }}"></script>
   {% block js_extra %}{% endblock %}
 </body>
 </html>
