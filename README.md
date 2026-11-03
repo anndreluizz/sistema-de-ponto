@@ -49,7 +49,7 @@ Ele roda **no computador da escola, sem internet**, porque no interior do Amazon
 
 ## Tecnologias
 
-![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
+![Testes](https://github.com/anndreluizz/sistema-de-ponto/actions/workflows/testes.yml/badge.svg) ![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
 ![Flask](https://img.shields.io/badge/Flask-000000?logo=flask&logoColor=white)
 ![SQLite](https://img.shields.io/badge/SQLite-003B57?logo=sqlite&logoColor=white)
 ![Bootstrap](https://img.shields.io/badge/Bootstrap-7952B3?logo=bootstrap&logoColor=white)

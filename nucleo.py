@@ -591,6 +591,35 @@ def verificar_backup_automatico():
         antigo.unlink(missing_ok=True)
 
 
+PASTAS_NUVEM = ("onedrive", "google drive", "googledrive", "dropbox")
+
+
+def aviso_backup_fora(conn):
+    """Texto de alerta quando o backup NÃO tem cópia fora deste disco, ou None se está tudo bem.
+    Se o HD do PC da escola morrer, backups/auto/ morre junto — só a pasta de destino salva."""
+    config = conn.execute(
+        "SELECT backup_frequencia_horas, backup_pasta_destino FROM configuracoes WHERE id = 1"
+    ).fetchone()
+    destino = config["backup_pasta_destino"] if config else None
+    if not destino:
+        return ("Os backups estão só neste computador: se o HD estragar, perde tudo. Escolha uma pasta "
+                "de destino (pendrive, HD externo ou OneDrive) em Configurações.")
+    pasta = Path(destino)
+    if not pasta.is_dir():
+        return f'A pasta de destino do backup ("{destino}") não está acessível. O pendrive/HD está conectado?'
+    na_nuvem = any(nome in destino.lower() for nome in PASTAS_NUVEM)
+    if not na_nuvem and pasta.resolve().drive.lower() == BASE_DIR.resolve().drive.lower():
+        return ("A pasta de destino do backup fica no mesmo disco do sistema: se o HD estragar, a cópia "
+                "vai junto. Use pendrive, HD externo ou OneDrive.")
+    frequencia = config["backup_frequencia_horas"] or 24
+    limite = datetime.now() - timedelta(hours=frequencia * 2 + 1)
+    tem_local = any(BACKUPS_AUTO_DIR.glob("auto-*.zip"))
+    tem_recente = any(d and d >= limite for d in (_datahora_backup_auto(a) for a in pasta.glob("auto-*.zip")))
+    if tem_local and not tem_recente:
+        return "Nenhuma cópia recente na pasta de destino do backup. Veja os erros em Auditoria."
+    return None
+
+
 COOKIE_TOTEM = "totem_autorizado"
 
 

@@ -12,6 +12,7 @@ from nucleo import (
     BLOQUEIO_LOGIN_MINUTOS,
     MAX_TENTATIVAS_LOGIN,
     app,
+    aviso_backup_fora,
     login_obrigatorio,
     registrar_auditoria,
 )
@@ -168,7 +169,8 @@ def admin_index():
 def dashboard():
     conn = db.get_db()
     try:
-        return render_template("dashboard.html", indicadores=calcular_dashboard(conn))
+        aviso_backup = aviso_backup_fora(conn) if session.get("usuario_perfil") == "administrador" else None
+        return render_template("dashboard.html", indicadores=calcular_dashboard(conn), aviso_backup=aviso_backup)
     finally:
         conn.close()
 
