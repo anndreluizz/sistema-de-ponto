@@ -1,8 +1,7 @@
 // Animações das telas de admin: cards entram deslizando (AOS) e números do painel contam (CountUp).
 // As marcações são postas aqui, não nos templates: sem JS (ou se algo falhar) tudo aparece normal.
+// Anima mesmo com "reduzir movimento" ligado no sistema: pedido do dono (03/11).
 (function () {
-  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-
   if (window.AOS) {
     document.querySelectorAll("main .card").forEach(function (el, i) {
       el.setAttribute("data-aos", "fade-up");
