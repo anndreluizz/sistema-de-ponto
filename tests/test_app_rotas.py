@@ -656,7 +656,7 @@ def test_cookie_de_totem_inventado_nao_bate(cliente):
 # --- Aviso de backup fora do PC ----------------------------------------------
 
 
-def test_aviso_backup_fora_do_pc(cliente, tmp_path):
+def test_aviso_backup_fora_do_pc(cliente, tmp_path, monkeypatch):
     from datetime import datetime
 
     import nucleo
@@ -674,6 +674,7 @@ def test_aviso_backup_fora_do_pc(cliente, tmp_path):
     assert "não está acessível" in aviso(str(tmp_path / "pendrive_ausente"))
     mesmo_disco = tmp_path / "copias"
     mesmo_disco.mkdir()
+    monkeypatch.setattr(nucleo, "BASE_DIR", tmp_path)  # no CI o código e o tmp ficam em discos diferentes
     assert "mesmo disco" in aviso(str(mesmo_disco))
 
     nuvem = tmp_path / "OneDrive" / "ponto"
