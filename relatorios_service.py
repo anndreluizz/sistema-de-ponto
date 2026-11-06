@@ -104,7 +104,7 @@ def jornada_na_data(f, data_obj):
 
 
 COLUNAS_POR_VISAO = {
-    "frequencia": ["Dias com ponto", "Faltas", "Atrasos", "Horas trabalhadas"],
+    "frequencia": ["Dias com ponto", "Faltas", "Atrasos", "Esperado", "Trabalhado", "Saldo"],
     "faltas": ["Dias úteis", "Faltas", "% de faltas"],
     "atrasos": ["Dias com ponto", "Atrasos", "Atraso acumulado", "Saídas antecipadas"],
     "horas_extras": ["Horas trabalhadas", "Horas esperadas", "Horas extras"],
@@ -115,7 +115,7 @@ COLUNAS_POR_VISAO = {
     ],
 }
 CHAVES_POR_VISAO = {
-    "frequencia": ["dias_com_ponto", "faltas", "atrasos", "horas_trabalhadas"],
+    "frequencia": ["dias_com_ponto", "faltas", "atrasos", "horas_esperadas", "horas_trabalhadas", "saldo"],
     "faltas": ["dias_uteis", "faltas", "percentual_faltas"],
     "atrasos": ["dias_com_ponto", "atrasos", "atraso_acumulado", "saidas_antecipadas"],
     "horas_extras": ["horas_trabalhadas", "horas_esperadas", "horas_extras"],
@@ -228,6 +228,38 @@ def agrupar_registros_por_dia(registros):
     return dias
 
 
+def marcar_sem_saida(dias, jornadas, hoje=None):
+    """Marca dia["sem_saida"] no dia que JA ACABOU e tem entrada sem saida (esqueceu de bater).
+    "Em andamento" fica so' para hoje -- e, no plantao que passa da meia-noite, tambem para
+    ontem (a saida ainda vem hoje de manha). dia["sugestao_saida"] = "AAAA-MM-DDTHH:MM" com o
+    fim do turno, pra preencher o "Lancar saida". jornadas = jornadas_atuais(conn)."""
+    hoje = hoje or date.today()
+    for d in dias:
+        j = jornadas.get(d["funcionario_id"]) or {}
+        entrada, saida = j.get("horario_entrada"), j.get("horario_saida")
+        noturno = bool(entrada and saida and saida <= entrada)
+        limite = hoje - timedelta(days=1) if noturno else hoje
+        d["sem_saida"] = d["data"] < limite and any(p["entrada"] and p["saida"] is None for p in d["pares"])
+        dia_saida = d["data"] + timedelta(days=1) if noturno else d["data"]
+        d["sugestao_saida"] = f"{dia_saida.isoformat()}T{saida or '17:00'}"
+    return dias
+
+
+def listar_sem_saida(conn, dias_atras=30, hoje=None):
+    """Dias (dos ultimos `dias_atras`) de funcionarios ativos que ficaram sem saida, mais recente
+    primeiro -- as pendencias do painel Hoje."""
+    hoje = hoje or date.today()
+    registros = conn.execute(
+        """SELECT registros.*, funcionarios.nome AS funcionario_nome
+           FROM registros JOIN funcionarios ON funcionarios.id = registros.funcionario_id
+           WHERE funcionarios.situacao = 'ativo' AND registros.timestamp >= date(?)
+           ORDER BY registros.funcionario_id, registros.timestamp""",
+        ((hoje - timedelta(days=dias_atras)).isoformat(),),
+    ).fetchall()
+    dias = marcar_sem_saida(agrupar_registros_por_dia(registros), jornadas_atuais(conn), hoje)
+    return sorted((d for d in dias if d["sem_saida"]), key=lambda d: (d["data"], d["funcionario_nome"]), reverse=True)
+
+
 def formatar_horas(total_segundos):
     if total_segundos is None:
         return "-"
@@ -312,6 +344,21 @@ def calcular_atalhos_periodo(hoje=None):
         "mes": (hoje.replace(day=1), hoje),
         "ano": (hoje.replace(month=1, day=1), hoje),
     }
+
+
+def saiu_antes_da_hora(entrada, saida, horario_entrada, horario_saida, tolerancia_saida_minutos):
+    """A saida foi antes do fim do turno (menos a tolerancia)? O fim conta a partir do dia da
+    entrada: no plantao que passa da meia-noite (saida <= entrada, ex.: 19:00-07:00) e' no dia
+    seguinte. Sem entrada no grupo (saida da manha que fecha o plantao de ontem), e' no dia da saida."""
+    saida_ts = datetime.strptime(saida["timestamp"], "%Y-%m-%d %H:%M:%S")
+    hora_fim = datetime.strptime(horario_saida, "%H:%M").time()
+    if entrada is not None:
+        fim = datetime.combine(datetime.strptime(entrada["timestamp"], "%Y-%m-%d %H:%M:%S").date(), hora_fim)
+        if horario_saida <= horario_entrada:
+            fim += timedelta(days=1)
+    else:
+        fim = datetime.combine(saida_ts.date(), hora_fim)
+    return saida_ts < fim - timedelta(minutes=tolerancia_saida_minutos)
 
 
 def preencher_colunas_historico(pares):
@@ -523,6 +570,96 @@ def montar_extrato_banco_horas(conn, funcionario_id, data_inicio, data_fim):
         cursor += timedelta(days=1)
 
     return funcionario, saldo_anterior_seg, linhas, saldo_seg
+
+
+def montar_ficha_mes(conn, funcionario_id, ano, mes, hoje=None):
+    """Tudo da ficha do funcionário num mês: a linha do funcionário, os números do mês
+    (trabalhado, esperado, saldo, faltas, atrasos, sem saída), o dia a dia (mais recente
+    primeiro, com falta e folga aparecendo) e as justificativas. None se não existir."""
+    hoje = hoje or date.today()
+    inicio = date(ano, mes, 1)
+    fim_mes = date(ano, mes, calendar.monthrange(ano, mes)[1])
+    fim = min(fim_mes, hoje)
+
+    funcionario, _ = montar_historico_funcionario(conn, funcionario_id, inicio.isoformat(), inicio.isoformat())
+    if funcionario is None:
+        return None
+
+    vazio = {"funcionario": funcionario, "inicio": inicio, "dias": [], "justificativas": [],
+             "trabalhado_seg": 0, "esperado_seg": 0, "faltas": 0, "atrasos": 0, "atraso_seg": 0, "sem_saida": 0}
+    if fim < inicio:  # mês que ainda não começou
+        return vazio
+
+    registros = conn.execute(
+        """SELECT registros.*, funcionarios.nome AS funcionario_nome
+           FROM registros JOIN funcionarios ON funcionarios.id = registros.funcionario_id
+           WHERE registros.funcionario_id = ? AND registros.timestamp >= date(?) AND registros.timestamp < date(?, '+2 day')
+           ORDER BY registros.timestamp""",
+        (funcionario_id, inicio.isoformat(), fim.isoformat()),  # +1 dia: saída do plantão do último dia
+    ).fetchall()
+    dias_por_data = {
+        d["data"]: d
+        for d in marcar_sem_saida(agrupar_registros_por_dia(registros), jornadas_atuais(conn), hoje)
+        if inicio <= d["data"] <= fim
+    }
+    justificativas = conn.execute(
+        "SELECT * FROM ausencias WHERE funcionario_id = ? AND data BETWEEN ? AND ? ORDER BY data DESC",
+        (funcionario_id, inicio.isoformat(), fim.isoformat()),
+    ).fetchall()
+    ausencia_por_data = {a["data"]: a for a in justificativas}
+    feriados = obter_feriados_no_periodo(conn, inicio.isoformat(), fim.isoformat())
+    admissao = funcionario["data_admissao"]
+
+    ficha = dict(vazio, justificativas=justificativas)
+    cursor = fim
+    while cursor >= inicio:
+        iso = cursor.isoformat()
+        if admissao and iso < admissao:
+            break
+        dia = dias_por_data.get(cursor)
+        ausencia = ausencia_por_data.get(iso)
+        fd = jornada_na_data(funcionario, cursor)
+        util = fd["horario_entrada"] is not None and dia_e_util_para_funcionario(fd, cursor, feriados)
+        esperado = 0 if ausencia else horas_esperadas_no_dia_segundos(funcionario, cursor, feriados)
+        trabalhado = dia["total_segundos"] if dia else 0
+        if cursor == hoje:
+            esperado = min(esperado, trabalhado)  # hoje ainda não acabou: não conta débito
+
+        selo = None
+        if ausencia:
+            selo = "justificada"
+        elif dia and dia["sem_saida"]:
+            selo = "sem_saida"
+            ficha["sem_saida"] += 1
+        elif not dia and cursor == hoje and util:
+            selo = "hoje"
+        elif not dia and util:
+            selo = "falta"
+            ficha["faltas"] += 1
+        elif not dia:
+            selo = "folga"
+
+        atraso = 0
+        if dia and util and not ausencia and dia["pares"] and dia["pares"][0]["entrada"]:
+            chegada = datetime.strptime(dia["pares"][0]["entrada"]["timestamp"], "%Y-%m-%d %H:%M:%S")
+            limite = datetime.combine(cursor, datetime.strptime(fd["horario_entrada"], "%H:%M").time()) + timedelta(
+                minutes=fd["tolerancia_minutos"] or 0
+            )
+            if chegada > limite:
+                atraso = (chegada - limite).total_seconds()
+                ficha["atrasos"] += 1
+                ficha["atraso_seg"] += atraso
+
+        ficha["trabalhado_seg"] += trabalhado
+        ficha["esperado_seg"] += esperado
+        ficha["dias"].append({
+            "data": cursor, "dia": dia, "ausencia": ausencia, "selo": selo, "atraso": atraso > 0,
+            "trabalhado": formatar_horas(trabalhado) if (dia or util) else "—",
+            "saldo_seg": trabalhado - esperado,
+            "saldo": formatar_horas(trabalhado - esperado) if (dia or util) and not ausencia else "—",
+        })
+        cursor -= timedelta(days=1)
+    return ficha
 
 
 def calcular_horas_extras_hoje(conn):
@@ -741,14 +878,11 @@ def calcular_stats_funcionarios_periodo(conn, data_inicio, data_fim, funcionario
                             atraso_acumulado_seg += (
                                 datetime.combine(d["data"], chegada) - datetime.combine(d["data"], limite_entrada)
                             ).total_seconds()
-                    if saida_dia and fd["tolerancia_saida_minutos"] is not None:
-                        limite_saida = (
-                            datetime.strptime(fd["horario_saida"], "%H:%M")
-                            - timedelta(minutes=fd["tolerancia_saida_minutos"])
-                        ).time()
-                        saida_hora = datetime.strptime(saida_dia["timestamp"], "%Y-%m-%d %H:%M:%S").time()
-                        if saida_hora < limite_saida:
-                            saidas_antecipadas += 1
+                    if saida_dia and fd["tolerancia_saida_minutos"] is not None and saiu_antes_da_hora(
+                        entrada_dia, saida_dia, fd["horario_entrada"], fd["horario_saida"],
+                        fd["tolerancia_saida_minutos"],
+                    ):
+                        saidas_antecipadas += 1
                 horas_extras_seg += max(0, d["total_segundos"] - horas_esperadas_dia)
 
         # Hoje e dias futuros só entram se já houver ponto: ainda não dá pra chamar de falta.
@@ -877,8 +1011,25 @@ def montar_linhas_central(conn, data_inicio, data_fim, agrupar_por, visao, funci
             linha["faltas"] = sum(m["faltas"] for m in membros)
             linha["atrasos"] = sum(m["atrasos"] for m in membros)
             linha["horas_trabalhadas"] = formatar_horas(sum(m["total_trabalhado_seg"] for m in membros))
+            # Esperado e saldo so' de quem tem turno (sem turno nao da' pra saber o esperado)
+            com_turno = [m for m in membros if m["tem_turno"]]
+            if com_turno:
+                esperadas = sum(m["horas_esperadas_seg"] for m in com_turno)
+                saldo = sum(m["total_trabalhado_seg"] for m in com_turno) - esperadas
+                linha["horas_esperadas"] = formatar_horas(esperadas)
+                linha["saldo"] = formatar_horas(saldo)
+                linha["saldo_seg"] = saldo
+            else:
+                linha["horas_esperadas"] = linha["saldo"] = "-"
+                linha["saldo_seg"] = 0
+            if agrupar_por == "funcionario" and len(membros) == 1:
+                linha["funcionario_id"] = membros[0]["funcionario"]["id"]
 
         linhas.append(linha)
+
+    if visao == "frequencia":
+        # quem tem mais problema primeiro: faltas, depois atrasos, depois o saldo mais negativo
+        linhas.sort(key=lambda l: (-l["faltas"], -l["atrasos"], l["saldo_seg"], l["dimensao"]))
 
     return linhas
 

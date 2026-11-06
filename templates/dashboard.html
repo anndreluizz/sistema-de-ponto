@@ -5,6 +5,7 @@
   {% set i = indicadores %}
   {% set atrasados_ids = i.faltas | map(attribute='id') | list %}
   {% set ve_nomes = session.usuario_perfil != 'consulta' %}
+  {% set pode_ajustar = session.usuario_perfil in ('administrador', 'rh') %}
 
   <h1 class="h3 fw-bold mb-1">Hoje</h1>
   <p class="text-secondary mb-4">{{ i.total_ativos }} funcionários ativos</p>
@@ -34,6 +35,12 @@
       <span class="painel-valor">{{ i.em_intervalo|length }}</span>
       <span class="painel-rotulo">No intervalo</span>
     </div>
+    {% if i.pendencias and pode_ajustar %}
+      <a class="painel-numero painel-numero-alerta" href="{{ url_for('ajustes_ponto', aba='pendencias', data_inicio=(i.pendencias|last).data.isoformat()) }}">
+        <span class="painel-valor">{{ i.pendencias|length }}</span>
+        <span class="painel-rotulo">Sem saída para lançar</span>
+      </a>
+    {% endif %}
   </div>
 
   {# O que é raro só aparece quando acontece #}
@@ -53,6 +60,27 @@
 
   {% if ve_nomes %}
     <div class="row g-4">
+      {% if i.pendencias and pode_ajustar %}
+        <div class="col-12">
+          <h2 class="h6 fw-bold mb-2">Pendências para resolver</h2>
+          <div class="card">
+            {% for d in i.pendencias[:5] %}
+              <div class="painel-linha">
+                <span class="badge selo-sem-saida">sem saída</span>
+                <div class="flex-grow-1">
+                  <div class="fw-semibold">{{ d.funcionario_nome }}</div>
+                  <div class="small text-secondary">{{ d.data.strftime('%d/%m') }} · entrou {{ d.pares[-1].entrada.timestamp[11:16] if d.pares[-1].entrada else '' }} e não registrou a saída</div>
+                </div>
+                <a class="btn btn-sm btn-outline-primary" href="{{ url_for('ajustes_ponto', aba='pendencias', funcionario_id=d.funcionario_id, data_inicio=d.data.isoformat(), data_fim=d.data.isoformat()) }}">Lançar saída</a>
+              </div>
+            {% endfor %}
+            {% if i.pendencias|length > 5 %}
+              <a class="painel-linha small fw-semibold" href="{{ url_for('ajustes_ponto', aba='pendencias', data_inicio=(i.pendencias|last).data.isoformat()) }}">Ver todas as {{ i.pendencias|length }}</a>
+            {% endif %}
+          </div>
+        </div>
+      {% endif %}
+
       <div class="col-lg-6">
         <h2 class="h6 fw-bold mb-2">Quem ainda não chegou</h2>
         <div class="card">
@@ -60,7 +88,7 @@
             <div class="painel-linha">
               {{ avatar(f, 32) }}
               <div class="flex-grow-1">
-                <div class="fw-semibold">{{ f.nome }}</div>
+                <a class="fw-semibold link-ficha d-block" href="{{ url_for('ficha_funcionario', funcionario_id=f.id) }}">{{ f.nome }}</a>
                 <div class="small text-secondary">{{ f.cargo or '—' }}</div>
               </div>
               {% if f.id in atrasados_ids %}

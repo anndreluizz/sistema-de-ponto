@@ -34,6 +34,37 @@
   </details>
 {% endmacro %}
 
+{# Uma linha da tabela de batidas (aba Pendências e aba Batidas) #}
+{% macro linha_dia(dia) %}
+  <tr class="{{ 'linha-pendente' if dia.sem_saida else '' }}">
+    <td class="text-nowrap fw-semibold">{{ dia.data.strftime('%d/%m') }}</td>
+    <td>{{ dia.funcionario_nome }}</td>
+    <td>
+      <div class="d-flex flex-wrap align-items-center gap-2">
+        {% for par in dia.pares %}
+          <span class="d-inline-flex align-items-center gap-1 batida-par">
+            {% if par.entrada %}{{ horario(par.entrada, 'entrada', dia.funcionario_id) }}{% else %}<span class="text-secondary">—</span>{% endif %}
+            <span class="text-secondary">→</span>
+            {% if par.saida %}
+              {{ horario(par.saida, 'saida', dia.funcionario_id) }}
+            {% elif dia.sem_saida %}
+              <span class="badge selo-sem-saida">sem saída</span>
+            {% else %}
+              <span class="badge text-bg-warning">em andamento</span>
+            {% endif %}
+          </span>
+        {% endfor %}
+        {% if dia.sem_saida %}
+          <button type="button" class="btn btn-sm btn-lancar-saida btn-duplicar-registro"
+                  data-funcionario-id="{{ dia.funcionario_id }}" data-tipo="saida"
+                  data-timestamp="{{ dia.sugestao_saida }}" data-motivo="Esqueceu de bater a saída">+ lançar saída</button>
+        {% endif %}
+      </div>
+    </td>
+    <td class="text-end text-nowrap {{ 'text-danger fw-semibold' if dia.sem_saida else '' }}">{{ dia.total_horas }}</td>
+  </tr>
+{% endmacro %}
+
 {% block conteudo %}
   <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
     <h1 class="h3 fw-bold mb-0 me-auto">Ajustes de ponto</h1>
@@ -50,8 +81,8 @@
           <div class="col-md-4">
             <label for="novo_funcionario_id" class="form-label small mb-1">Funcionário</label>
             <select id="novo_funcionario_id" name="funcionario_id" class="form-select" required>
-              <option value="" disabled selected>Selecione</option>
-              {% for f in funcionarios %}<option value="{{ f.id }}">{{ f.nome }}</option>{% endfor %}
+              <option value="" disabled {{ "" if funcionario_id else "selected" }}>Selecione</option>
+              {% for f in funcionarios %}<option value="{{ f.id }}" {{ "selected" if funcionario_id == f.id|string else "" }}>{{ f.nome }}</option>{% endfor %}
             </select>
           </div>
           <div class="col-6 col-md-2">
@@ -75,7 +106,7 @@
     </form>
   </div>
 
-  <div class="collapse" id="form-justificativa">
+  <div class="collapse {{ 'show' if aba == 'justificativas' else '' }}" id="form-justificativa">
     <form method="post" action="{{ url_for('nova_ausencia') }}" class="card mb-3 sem-impressao">
       {{ csrf_input() }}
       <div class="card-body">
@@ -85,8 +116,8 @@
           <div class="col-md-4">
             <label class="form-label small mb-1" for="campo-funcionario-id">Funcionário</label>
             <select id="campo-funcionario-id" name="funcionario_id" class="form-select" required>
-              <option value="" disabled selected>Selecione</option>
-              {% for f in funcionarios %}<option value="{{ f.id }}">{{ f.nome }}</option>{% endfor %}
+              <option value="" disabled {{ "" if funcionario_id else "selected" }}>Selecione</option>
+              {% for f in funcionarios %}<option value="{{ f.id }}" {{ "selected" if funcionario_id == f.id|string else "" }}>{{ f.nome }}</option>{% endfor %}
             </select>
           </div>
           <div class="col-6 col-md-2">
@@ -138,42 +169,48 @@
     <a class="small ms-auto" href="{{ url_for('exportar_csv', funcionario_id=funcionario_id, data_inicio=data_inicio, data_fim=data_fim) }}">baixar CSV</a>
   </form>
 
+  {% set abrir_pendencias = aba == 'pendencias' %}
+  {% set abrir_just = aba == 'justificativas' %}
   <ul class="nav nav-tabs mb-0" role="tablist">
     <li class="nav-item" role="presentation">
-      <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#aba-batidas" type="button" role="tab">Batidas</button>
+      <button class="nav-link {{ 'active' if abrir_pendencias else '' }}" data-bs-toggle="tab" data-bs-target="#aba-pendencias" type="button" role="tab">
+        Pendências{% if pendentes %} <span class="badge rounded-pill text-bg-danger">{{ pendentes|length }}</span>{% endif %}
+      </button>
     </li>
     <li class="nav-item" role="presentation">
-      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#aba-justificativas" type="button" role="tab">
+      <button class="nav-link {{ '' if abrir_pendencias or abrir_just else 'active' }}" data-bs-toggle="tab" data-bs-target="#aba-batidas" type="button" role="tab">Batidas</button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link {{ 'active' if abrir_just else '' }}" data-bs-toggle="tab" data-bs-target="#aba-justificativas" type="button" role="tab">
         Justificativas{% if ausencias %} <span class="badge rounded-pill text-bg-light border">{{ ausencias|length }}</span>{% endif %}
       </button>
     </li>
   </ul>
 
   <div class="tab-content">
-    <div class="tab-pane fade show active" id="aba-batidas" role="tabpanel">
+    <div class="tab-pane fade {{ 'show active' if abrir_pendencias else '' }}" id="aba-pendencias" role="tabpanel">
       <div class="card card-aba">
         <div class="table-responsive">
-          <table class="table align-middle mb-0">
+          <table class="table table-hover align-middle mb-0">
+            <thead><tr><th>Dia</th><th>Funcionário</th><th>Batidas</th><th class="text-end">Total</th></tr></thead>
+            <tbody>
+              {% for dia in pendentes %}{{ linha_dia(dia) }}{% else %}
+                <tr><td colspan="4" class="text-secondary text-center py-4">Nada pendente nesse período: todo dia que já acabou tem saída.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <p class="small text-secondary mt-2 mb-0">"Sem saída" é dia que já acabou com entrada e sem saída. "Em andamento" só aparece no dia de hoje.</p>
+    </div>
+
+    <div class="tab-pane fade {{ '' if abrir_pendencias or abrir_just else 'show active' }}" id="aba-batidas" role="tabpanel">
+      <div class="card card-aba">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
             <thead><tr><th>Dia</th><th>Funcionário</th><th>Batidas <span class="fw-normal text-secondary small">(clique num horário para ajustar)</span></th><th class="text-end">Total</th></tr></thead>
             <tbody>
-              {% for dia in dias %}
-                <tr>
-                  <td class="text-nowrap">{{ dia.data.strftime('%d/%m') }}</td>
-                  <td>{{ dia.funcionario_nome }}</td>
-                  <td>
-                    <div class="d-flex flex-wrap align-items-center gap-2">
-                      {% for par in dia.pares %}
-                        <span class="d-inline-flex align-items-center gap-1 batida-par">
-                          {% if par.entrada %}{{ horario(par.entrada, 'entrada', dia.funcionario_id) }}{% else %}<span class="text-secondary">—</span>{% endif %}
-                          <span class="text-secondary">→</span>
-                          {% if par.saida %}{{ horario(par.saida, 'saida', dia.funcionario_id) }}{% else %}<span class="badge text-bg-warning">em andamento</span>{% endif %}
-                        </span>
-                      {% endfor %}
-                    </div>
-                  </td>
-                  <td class="text-end text-nowrap">{{ dia.total_horas }}</td>
-                </tr>
-              {% else %}
+              {% for dia in dias %}{{ linha_dia(dia) }}{% else %}
                 <tr><td colspan="4" class="text-secondary text-center py-4">Nenhuma batida nesse período.</td></tr>
               {% endfor %}
             </tbody>
@@ -182,7 +219,7 @@
       </div>
     </div>
 
-    <div class="tab-pane fade" id="aba-justificativas" role="tabpanel">
+    <div class="tab-pane fade {{ 'show active' if abrir_just else '' }}" id="aba-justificativas" role="tabpanel">
       <div class="card card-aba">
         <div class="table-responsive">
           <table class="table align-middle mb-0">

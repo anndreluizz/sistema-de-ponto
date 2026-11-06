@@ -5,7 +5,7 @@ import hmac
 import re
 import secrets
 import sqlite3
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 import qrcode
 from flask import abort, flash, redirect, render_template, request, send_file, session, url_for
 from PIL import Image, ImageOps
@@ -118,10 +118,78 @@ def funcionarios():
                         END, funcionarios.nome"""
         ).fetchall()
         setores_lista = conn.execute("SELECT * FROM setores ORDER BY nome").fetchall()
-        turnos_lista = conn.execute("SELECT * FROM turnos ORDER BY nome").fetchall()
-        return render_template("funcionarios.html", funcionarios=lista, setores=setores_lista, turnos=turnos_lista)
+        hoje = date.today()
+        stats_mes = relatorios_service.calcular_stats_funcionarios_periodo(
+            conn, hoje.replace(day=1).isoformat(), hoje.isoformat()
+        )
+        mes = {
+            fid: {
+                "faltas": s["faltas"],
+                "saldo_seg": s["total_trabalhado_seg"] - s["horas_esperadas_seg"] if s["tem_turno"] else None,
+            }
+            for fid, s in stats_mes.items()
+        }
+        categorias = [(c, nome, sum(1 for f in lista if f["situacao"] == "ativo" and (f["categoria"] or "outro") == c))
+                      for c, nome in relatorios_service.NOMES_CATEGORIA.items()]
+        return render_template(
+            "funcionarios.html",
+            funcionarios=lista,
+            setores=setores_lista,
+            situacao_hoje=_situacao_hoje(conn),
+            mes=mes,
+            fh=relatorios_service.formatar_horas,
+            categorias=[c for c in categorias if c[2]],
+            total_ativos=sum(1 for f in lista if f["situacao"] == "ativo"),
+        )
     finally:
         conn.close()
+
+
+# (rótulo, classe do selo) da coluna "Hoje" -- mesma conta do painel Hoje
+SITUACAO_HOJE = {
+    "presente": ("Presente", "selo-presente"),
+    "atrasou": ("Atrasou", "selo-hoje"),
+    "intervalo": ("No intervalo", "selo-folga"),
+    "saiu": ("Já saiu", "selo-folga"),
+    "nao_chegou": ("Não chegou", "selo-sem-saida"),
+    "ainda_nao": ("Ainda não chegou", "selo-hoje"),
+    "justificada": ("Justificada", "selo-justificada"),
+    "folga": ("Folga hoje", "selo-folga"),
+}
+
+
+def _situacao_hoje(conn):
+    """{funcionario_id: chave de SITUACAO_HOJE} dos ativos."""
+    from rotas.acesso import calcular_dashboard
+
+    i = calcular_dashboard(conn)
+    ids = lambda chave: {f["id"] for f in i[chave]}  # noqa: E731
+    justificados = ids("ferias_hoje") | ids("licencas_hoje") | ids("atestados_hoje")
+    presentes, atrasados, intervalo = ids("presentes"), ids("atrasados"), ids("em_intervalo")
+    faltas, ausentes = ids("faltas"), ids("ausentes")
+    bateu_hoje = {
+        r["funcionario_id"]
+        for r in conn.execute("SELECT DISTINCT funcionario_id FROM registros WHERE timestamp >= date('now', 'localtime')")
+    }
+    situacao = {}
+    for f in conn.execute("SELECT id FROM funcionarios WHERE situacao = 'ativo'").fetchall():
+        fid = f["id"]
+        if fid in justificados:
+            chave = "justificada"
+        elif fid in presentes:
+            chave = "atrasou" if fid in atrasados else "presente"
+        elif fid in intervalo:
+            chave = "intervalo"
+        elif fid in bateu_hoje:
+            chave = "saiu"
+        elif fid in faltas:
+            chave = "nao_chegou"
+        elif fid in ausentes:
+            chave = "ainda_nao"
+        else:
+            chave = "folga"
+        situacao[fid] = SITUACAO_HOJE[chave]
+    return situacao
 
 
 def salvar_funcionario(conn, funcionario_id):
@@ -472,7 +540,7 @@ def cracha_funcionario(funcionario_id):
 @login_obrigatorio
 @perfil_obrigatorio(*PERFIS_LEITURA)
 def crachas_em_massa():
-    """Crachás de todos os ativos (ou de uma categoria), 10 por folha A4."""
+    """Crachás de todos os ativos (ou de uma categoria), em folhas A4."""
     categoria = request.args.get("categoria", "").strip()
     conn = db.get_db()
     try:
@@ -491,6 +559,48 @@ def crachas_em_massa():
         flash("Nenhum funcionário ativo para imprimir crachá.", "erro")
         return redirect(url_for("funcionarios"))
     return render_template("cracha.html", funcionarios=funcionarios, config=config)
+
+
+@app.route("/admin/funcionarios/<int:funcionario_id>")
+@login_obrigatorio
+@perfil_obrigatorio(*PERFIS_LEITURA)
+def ficha_funcionario(funcionario_id):
+    """Ficha: tudo da pessoa num lugar só (mês, dia a dia, justificativas, banco de horas)."""
+    hoje = date.today()
+    try:
+        ano, mes = (int(x) for x in (request.args.get("mes") or hoje.strftime("%Y-%m")).split("-"))
+        date(ano, mes, 1)
+    except ValueError:
+        ano, mes = hoje.year, hoje.month
+    conn = db.get_db()
+    try:
+        ficha = relatorios_service.montar_ficha_mes(conn, funcionario_id, ano, mes)
+        if ficha is None:
+            abort(404)
+        f = ficha["funcionario"]
+        saldo_banco = relatorios_service.calcular_saldo_banco_horas_ate(conn, f, hoje)
+        anterior = (date(ano, mes, 1) - timedelta(days=1)).strftime("%Y-%m")
+        proximo = (date(ano, mes, 28) + timedelta(days=4)).strftime("%Y-%m")
+        return render_template(
+            "ficha_funcionario.html",
+            f=f,
+            ficha=ficha,
+            fh=relatorios_service.formatar_horas,
+            saldo_banco=saldo_banco,
+            mes_atual=f"{ano:04d}-{mes:02d}",
+            mes_anterior=anterior,
+            mes_proximo=proximo if proximo <= hoje.strftime("%Y-%m") else None,
+            nome_mes=NOMES_MESES[mes - 1],
+            ano=ano,
+            nomes_tipo_ausencia=NOMES_TIPO_AUSENCIA,
+            nomes_categoria=relatorios_service.NOMES_CATEGORIA,
+        )
+    finally:
+        conn.close()
+
+
+NOMES_MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto",
+               "setembro", "outubro", "novembro", "dezembro"]
 
 
 @app.route("/admin/funcionarios/<int:funcionario_id>/historico")

@@ -533,3 +533,70 @@ def test_saida_muito_depois_da_entrada_nao_junta_dias():
     dias = agrupar_registros_por_dia([r("entrada", "2026-11-02 07:00:00"), r("saida", "2026-11-03 11:30:00")])
 
     assert len(dias) == 2
+
+
+def test_saida_antecipada_no_plantao_que_passa_da_meia_noite():
+    from relatorios_service import saiu_antes_da_hora
+
+    def reg(ts):
+        return {"timestamp": ts}
+
+    # plantao 19:00-07:00, tolerancia 10 min: saiu 23:00 do mesmo dia = antes da hora
+    assert saiu_antes_da_hora(reg("2026-11-05 19:00:00"), reg("2026-11-05 23:00:00"), "19:00", "07:00", 10)
+    # saiu 06:55 do dia seguinte = dentro da tolerancia
+    assert not saiu_antes_da_hora(reg("2026-11-05 19:00:00"), reg("2026-11-06 06:55:00"), "19:00", "07:00", 10)
+    # saida da manha sem a entrada no grupo (painel de hoje): conta no proprio dia
+    assert not saiu_antes_da_hora(None, reg("2026-11-06 07:00:00"), "07:00", "07:00", 10)
+    assert saiu_antes_da_hora(None, reg("2026-11-06 06:30:00"), "07:00", "07:00", 10)
+    # turno normal continua igual
+    assert saiu_antes_da_hora(reg("2026-11-06 07:00:00"), reg("2026-11-06 16:00:00"), "07:00", "17:00", 10)
+    assert not saiu_antes_da_hora(reg("2026-11-06 07:00:00"), reg("2026-11-06 16:55:00"), "07:00", "17:00", 10)
+
+
+def test_marcar_sem_saida_so_em_dia_que_ja_acabou():
+    from datetime import date as _date
+    from relatorios_service import marcar_sem_saida
+
+    def dia(fid, d, com_saida):
+        entrada = {"timestamp": f"{d.isoformat()} 07:00:00"}
+        return {"funcionario_id": fid, "data": d, "pares": [{"entrada": entrada, "saida": {} if com_saida else None}]}
+
+    hoje = _date(2026, 11, 6)
+    jornadas = {1: {"horario_entrada": "07:00", "horario_saida": "16:00"},
+                2: {"horario_entrada": "07:00", "horario_saida": "07:00"}}  # 2 = plantao 24h
+    dias = marcar_sem_saida([
+        dia(1, _date(2026, 11, 6), False),   # hoje: em andamento
+        dia(1, _date(2026, 11, 5), False),   # ontem, turno normal: sem saida
+        dia(1, _date(2026, 11, 4), True),    # fechado
+        dia(2, _date(2026, 11, 5), False),   # plantao de ontem: a saida vem hoje de manha
+        dia(2, _date(2026, 11, 4), False),   # plantao de anteontem: sem saida
+    ], jornadas, hoje)
+    assert [d["sem_saida"] for d in dias] == [False, True, False, False, True]
+    assert dias[1]["sugestao_saida"] == "2026-11-05T16:00"
+    assert dias[4]["sugestao_saida"] == "2026-11-05T07:00"
+
+
+def test_frequencia_tem_esperado_saldo_e_mostra_quem_tem_problema_primeiro(conn, cenario_semana):
+    linhas = montar_linhas_central(conn, "2026-01-05", "2026-01-09", "funcionario", "frequencia")
+    assert [l["dimensao"] for l in linhas] == ["Beto Testado", "Ana Pontual"]
+    beto = linhas[0]
+    assert beto["horas_esperadas"] == "32:00"  # quinta de férias não conta
+    assert beto["saldo"] == "-07:25" and beto["saldo_seg"] < 0
+    assert linhas[1]["saldo"] == "00:00"
+
+
+def test_ficha_do_mes_mostra_falta_atraso_e_justificativa(conn, cenario_semana):
+    from datetime import date as _date
+    from relatorios_service import montar_ficha_mes
+
+    ficha = montar_ficha_mes(conn, cenario_semana["beto_id"], 2026, 1, hoje=_date(2026, 1, 9))
+    # mesma conta do relatório do período (o mês todo, desde o dia 1o)
+    relatorio = {l["dimensao"]: l for l in montar_linhas_central(conn, "2026-01-01", "2026-01-09", "funcionario", "frequencia")}
+    assert ficha["faltas"] == relatorio["Beto Testado"]["faltas"]
+    assert ficha["atrasos"] == relatorio["Beto Testado"]["atrasos"] == 1
+    assert ficha["trabalhado_seg"] - ficha["esperado_seg"] == relatorio["Beto Testado"]["saldo_seg"]
+    assert len(ficha["justificativas"]) == 1
+    selos = {d["data"].isoformat(): d["selo"] for d in ficha["dias"]}
+    assert selos["2026-01-07"] == "falta"
+    assert selos["2026-01-08"] == "justificada"
+    assert ficha["dias"][0]["data"] == _date(2026, 1, 9)  # mais recente primeiro

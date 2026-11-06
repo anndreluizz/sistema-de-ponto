@@ -30,10 +30,17 @@
     </div>
   </div>
 
+  <div class="d-flex flex-wrap gap-2 mb-2" role="group" aria-label="Categoria">
+    <button type="button" class="btn btn-sm chip-categoria active" data-categoria="" aria-pressed="true">Todos <span class="opacity-75">{{ total_ativos }}</span></button>
+    {% for chave, nome, qtd in categorias %}
+      <button type="button" class="btn btn-sm chip-categoria" data-categoria="{{ chave }}" aria-pressed="false">{{ nome }} <span class="opacity-75">{{ qtd }}</span></button>
+    {% endfor %}
+  </div>
+
   <div class="card mb-3">
     <div class="card-body">
       <div class="row g-2">
-        <div class="col-md-4">
+        <div class="col-md-6">
           <div class="input-group">
             <span class="input-group-text"><i class="bi bi-search"></i></span>
             <input type="text" id="busca-funcionario" class="form-control" aria-label="Buscar funcionário" placeholder="Buscar por nome, cargo ou matrícula...">
@@ -54,12 +61,6 @@
             {% for s in setores %}<option value="{{ s.id }}">{{ s.nome }}</option>{% endfor %}
           </select>
         </div>
-        <div class="col-md-2">
-          <select id="filtro-turno" class="form-select" aria-label="Filtrar por turno">
-            <option value="">Todos os turnos</option>
-            {% for t in turnos %}<option value="{{ t.id }}">{{ t.nome }}</option>{% endfor %}
-          </select>
-        </div>
       </div>
     </div>
   </div>
@@ -70,50 +71,54 @@
         <thead>
           <tr>
             <th>Funcionário</th>
-            <th>Setor</th>
-            <th class="d-none d-md-table-cell">Turno</th>
-            <th class="d-none d-md-table-cell">Último ponto</th>
-            <th>Status</th>
-            <th class="text-end">Ações</th>
+            <th class="d-none d-md-table-cell">Setor</th>
+            <th>Hoje</th>
+            <th class="text-end d-none d-sm-table-cell">Saldo do mês</th>
+            <th class="text-end d-none d-sm-table-cell">Faltas no mês</th>
+            <th class="text-end"><span class="visually-hidden">Ações</span></th>
           </tr>
         </thead>
         <tbody>
           {% for f in funcionarios %}
-          <tr data-busca="{{ (f.nome ~ ' ' ~ f.cargo ~ ' ' ~ (f.matricula or ''))|lower }}"
+          {% set m = mes.get(f.id, {}) %}
+          <tr data-busca="{{ (f.nome ~ ' ' ~ (f.cargo or '') ~ ' ' ~ (f.matricula or ''))|lower }}"
               data-situacao="{{ f.situacao }}"
               data-setor="{{ f.setor_id or '' }}"
-              data-turno="{{ f.turno_id or '' }}">
+              data-categoria="{{ f.categoria or 'outro' }}">
             <td>
-              <div class="d-flex align-items-center gap-2">
+              <a href="{{ url_for('ficha_funcionario', funcionario_id=f.id) }}" class="d-flex align-items-center gap-2 link-ficha-linha">
                 {{ avatar(f, tamanho=40) }}
                 <div>
-                  <div class="fw-semibold">{{ f.nome }}</div>
+                  <div class="fw-semibold">{{ f.nome }} {% if f.situacao != 'ativo' %}{{ badge_situacao(f.situacao) }}{% endif %}</div>
                   <div class="text-secondary small">
                     {{ f.cargo }}{% if f.matricula %} · Mat. {{ f.matricula }}{% endif %}
                     {% if f.vinculo %} · {{ "Efetivo" if f.vinculo == "efetivo" else "Contratado" }}{% endif %}
                   </div>
                 </div>
-              </div>
+              </a>
             </td>
-            <td>{{ f.setor_nome or "—" }}</td>
-            <td class="d-none d-md-table-cell">{{ f.turno_ou_escala_nome or "—" }}</td>
-            <td class="d-none d-md-table-cell">
-              {% if f.ultimo_timestamp %}
-                {{ f.ultimo_timestamp[8:10] }}/{{ f.ultimo_timestamp[5:7] }} às {{ f.ultimo_timestamp[11:16] }}
-              {% else %}
-                <span class="text-secondary">Nunca</span>
-              {% endif %}
+            <td class="d-none d-md-table-cell">{{ f.setor_nome or "—" }}</td>
+            <td>
+              {% if f.id in situacao_hoje %}
+                <span class="badge {{ situacao_hoje[f.id][1] }}">{{ situacao_hoje[f.id][0] }}</span>
+              {% else %}<span class="text-secondary small">—</span>{% endif %}
             </td>
-            <td>{{ badge_situacao(f.situacao) }}</td>
+            <td class="text-end num fw-bold d-none d-sm-table-cell {{ 'text-danger' if m.saldo_seg is not none and m.saldo_seg < 0 else ('text-success' if m.saldo_seg else 'text-secondary') }}">
+              {{ fh(m.saldo_seg) if m.saldo_seg is not none else "—" }}
+            </td>
+            <td class="text-end d-none d-sm-table-cell">
+              {% if m.faltas %}<span class="selo-num selo-num-falta num">{{ m.faltas }}</span>{% else %}<span class="text-secondary num">{{ 0 if m else "—" }}</span>{% endif %}
+            </td>
             <td class="text-end">
               <div class="dropdown">
-                <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="dropdown" title="Ações">
+                <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="dropdown" title="Ações" aria-label="Ações para {{ f.nome }}">
                   <i class="bi bi-three-dots"></i>
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end">
                   {% if session.usuario_perfil in ('administrador', 'rh') %}
                     <li><a class="dropdown-item" href="{{ url_for('editar_funcionario', funcionario_id=f.id) }}"><i class="bi bi-pencil me-2"></i>Editar</a></li>
                   {% endif %}
+                  <li><a class="dropdown-item" href="{{ url_for('ficha_funcionario', funcionario_id=f.id) }}"><i class="bi bi-person-lines-fill me-2"></i>Abrir ficha</a></li>
                   <li><a class="dropdown-item" href="{{ url_for('cracha_funcionario', funcionario_id=f.id) }}" target="_blank"><i class="bi bi-person-vcard me-2"></i>Ver crachá</a></li>
                   <li><a class="dropdown-item" href="{{ url_for('historico_funcionario', funcionario_id=f.id) }}"><i class="bi bi-clock-history me-2"></i>Histórico de ponto</a></li>
                   <li><a class="dropdown-item" href="{{ url_for('banco_horas_funcionario', funcionario_id=f.id) }}"><i class="bi bi-piggy-bank me-2"></i>Banco de horas</a></li>
