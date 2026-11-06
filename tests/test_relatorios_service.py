@@ -551,3 +551,26 @@ def test_saida_antecipada_no_plantao_que_passa_da_meia_noite():
     # turno normal continua igual
     assert saiu_antes_da_hora(reg("2026-11-06 07:00:00"), reg("2026-11-06 16:00:00"), "07:00", "17:00", 10)
     assert not saiu_antes_da_hora(reg("2026-11-06 07:00:00"), reg("2026-11-06 16:55:00"), "07:00", "17:00", 10)
+
+
+def test_marcar_sem_saida_so_em_dia_que_ja_acabou():
+    from datetime import date as _date
+    from relatorios_service import marcar_sem_saida
+
+    def dia(fid, d, com_saida):
+        entrada = {"timestamp": f"{d.isoformat()} 07:00:00"}
+        return {"funcionario_id": fid, "data": d, "pares": [{"entrada": entrada, "saida": {} if com_saida else None}]}
+
+    hoje = _date(2026, 11, 6)
+    jornadas = {1: {"horario_entrada": "07:00", "horario_saida": "16:00"},
+                2: {"horario_entrada": "07:00", "horario_saida": "07:00"}}  # 2 = plantao 24h
+    dias = marcar_sem_saida([
+        dia(1, _date(2026, 11, 6), False),   # hoje: em andamento
+        dia(1, _date(2026, 11, 5), False),   # ontem, turno normal: sem saida
+        dia(1, _date(2026, 11, 4), True),    # fechado
+        dia(2, _date(2026, 11, 5), False),   # plantao de ontem: a saida vem hoje de manha
+        dia(2, _date(2026, 11, 4), False),   # plantao de anteontem: sem saida
+    ], jornadas, hoje)
+    assert [d["sem_saida"] for d in dias] == [False, True, False, False, True]
+    assert dias[1]["sugestao_saida"] == "2026-11-05T16:00"
+    assert dias[4]["sugestao_saida"] == "2026-11-05T07:00"

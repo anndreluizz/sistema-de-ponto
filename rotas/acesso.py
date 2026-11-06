@@ -154,6 +154,7 @@ def calcular_dashboard(conn):
         "horas_extras_hoje": relatorios_service.formatar_horas(horas_extras_hoje_seg),
         "registros_hoje": len(registros_hoje),
         "ultimas_batidas": ultimas_batidas,
+        "pendencias": relatorios_service.listar_sem_saida(conn),
     }
 
 

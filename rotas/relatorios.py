@@ -203,7 +203,12 @@ def ajustes_ponto():
         query += " ORDER BY funcionario_nome, registros.timestamp"
 
         registros = conn.execute(query, params).fetchall()
-        dias = relatorios_service.agrupar_registros_por_dia(registros)
+        dias = relatorios_service.marcar_sem_saida(
+            relatorios_service.agrupar_registros_por_dia(registros), relatorios_service.jornadas_atuais(conn)
+        )
+        # dia mais recente primeiro: o que precisa de ajuste costuma ser desta semana
+        dias.sort(key=lambda d: (d["data"], d["funcionario_nome"]), reverse=True)
+        pendentes = [d for d in dias if d["sem_saida"]]
 
         query_ausencias = """
             SELECT ausencias.*, funcionarios.nome AS funcionario_nome
@@ -232,6 +237,8 @@ def ajustes_ponto():
             "ajustes_ponto.html",
             funcionarios=funcionarios_lista,
             dias=dias,
+            pendentes=pendentes,
+            aba=request.args.get("aba", ""),
             ausencias=ausencias,
             documentos_por_ausencia=documentos_por_ausencia,
             funcionario_id=funcionario_id,

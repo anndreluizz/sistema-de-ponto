@@ -228,6 +228,38 @@ def agrupar_registros_por_dia(registros):
     return dias
 
 
+def marcar_sem_saida(dias, jornadas, hoje=None):
+    """Marca dia["sem_saida"] no dia que JA ACABOU e tem entrada sem saida (esqueceu de bater).
+    "Em andamento" fica so' para hoje -- e, no plantao que passa da meia-noite, tambem para
+    ontem (a saida ainda vem hoje de manha). dia["sugestao_saida"] = "AAAA-MM-DDTHH:MM" com o
+    fim do turno, pra preencher o "Lancar saida". jornadas = jornadas_atuais(conn)."""
+    hoje = hoje or date.today()
+    for d in dias:
+        j = jornadas.get(d["funcionario_id"]) or {}
+        entrada, saida = j.get("horario_entrada"), j.get("horario_saida")
+        noturno = bool(entrada and saida and saida <= entrada)
+        limite = hoje - timedelta(days=1) if noturno else hoje
+        d["sem_saida"] = d["data"] < limite and any(p["entrada"] and p["saida"] is None for p in d["pares"])
+        dia_saida = d["data"] + timedelta(days=1) if noturno else d["data"]
+        d["sugestao_saida"] = f"{dia_saida.isoformat()}T{saida or '17:00'}"
+    return dias
+
+
+def listar_sem_saida(conn, dias_atras=30, hoje=None):
+    """Dias (dos ultimos `dias_atras`) de funcionarios ativos que ficaram sem saida, mais recente
+    primeiro -- as pendencias do painel Hoje."""
+    hoje = hoje or date.today()
+    registros = conn.execute(
+        """SELECT registros.*, funcionarios.nome AS funcionario_nome
+           FROM registros JOIN funcionarios ON funcionarios.id = registros.funcionario_id
+           WHERE funcionarios.situacao = 'ativo' AND registros.timestamp >= date(?)
+           ORDER BY registros.funcionario_id, registros.timestamp""",
+        ((hoje - timedelta(days=dias_atras)).isoformat(),),
+    ).fetchall()
+    dias = marcar_sem_saida(agrupar_registros_por_dia(registros), jornadas_atuais(conn), hoje)
+    return sorted((d for d in dias if d["sem_saida"]), key=lambda d: (d["data"], d["funcionario_nome"]), reverse=True)
+
+
 def formatar_horas(total_segundos):
     if total_segundos is None:
         return "-"

@@ -768,3 +768,19 @@ def test_crachas_em_massa_lista_so_ativos_da_categoria(cliente):
     assert "Prof Ativo" in html and "Prof Inativo" not in html and "Vigia Ativo" not in html
     todos = cliente.get("/admin/funcionarios/crachas").get_data(as_text=True)
     assert todos.count('class="cracha-cartao"') == 2
+
+
+def test_dia_passado_sem_saida_vira_pendencia_no_painel_e_nos_ajustes(cliente):
+    funcionario_id = _criar_funcionario("ESQUECEU1")
+    _entrada_ontem_23h59(funcionario_id)
+    _criar_usuario("admin_pend", "SenhaForte123!", "administrador")
+    _login(cliente, "admin_pend", "SenhaForte123!")
+
+    painel = cliente.get("/admin/dashboard").get_data(as_text=True)
+    assert "Pendências para resolver" in painel and "sem saída" in painel
+
+    from datetime import date, timedelta
+    ontem = (date.today() - timedelta(days=1)).isoformat()  # dia 1o: ontem e' do mes passado
+    ajustes = cliente.get(f"/admin/ajustes?aba=pendencias&data_inicio={ontem}").get_data(as_text=True)
+    assert "+ lançar saída" in ajustes
+    assert "em andamento" not in ajustes

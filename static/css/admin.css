@@ -274,3 +274,13 @@ main .card[data-aos][data-aos].aos-animate { transform: none; }
 .menu-links .nav-link { transition: color 0.15s ease, border-color 0.2s ease; }
 .form-control, .form-select { transition: border-color 0.15s ease, box-shadow 0.2s ease; }
 
+
+/* ---------- Ponto 2.0: pendencias (dia que acabou sem saida) ---------- */
+.painel-numeros { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
+.painel-numero-alerta { background: #FFF4D6; color: #7A4F00; }
+.painel-numero-alerta .painel-valor, .painel-numero-alerta .painel-rotulo { color: #7A4F00; }
+.painel-numero-alerta .painel-rotulo { font-weight: 600; }
+.selo-sem-saida { background: #FDECEA; color: #B42318; font-weight: 700; }
+.linha-pendente > td { background: #FFFBFA; }
+.btn-lancar-saida { border: 1px dashed #B42318; color: #B42318; background: #fff; font-weight: 600; }
+.btn-lancar-saida:hover { background: #FDECEA; color: #8F1B13; }

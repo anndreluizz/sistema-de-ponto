@@ -44,6 +44,9 @@
         if (aberto) aberto.removeAttribute("open");
         selectFuncionario.value = botao.dataset.funcionarioId;
         selectTipo.value = botao.dataset.tipo;
+        if (campoTimestamp && botao.dataset.timestamp) campoTimestamp.value = botao.dataset.timestamp;
+        var campoMotivo = document.getElementById("novo_motivo");
+        if (campoMotivo && botao.dataset.motivo) campoMotivo.value = botao.dataset.motivo;
         if (campoTimestamp) {
           campoTimestamp.scrollIntoView({ behavior: "smooth", block: "center" });
           campoTimestamp.focus();
