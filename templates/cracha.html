@@ -18,12 +18,13 @@
       <i class="bi bi-printer me-1"></i>Imprimir {{ funcionarios|length }} crachá{{ 's' if funcionarios|length > 1 }}
     </button>
     <a href="{{ url_for('funcionarios') }}" class="btn btn-outline-secondary">Voltar</a>
-    <span class="text-secondary small">Tamanho cartão (85,6 × 54 mm), 10 por folha A4. Na impressão, use escala 100% ("Tamanho real").</span>
+    <span class="text-secondary small">Tamanho cartão (54 × 85,6 mm, em pé), 15 por folha A4. Recorte na linha tracejada e fure no retângulo de cima para o cordão. Na impressão, use escala 100% ("Tamanho real").</span>
   </div>
 
   <div class="cracha-folha">
     {% for funcionario in funcionarios %}
     <div class="cracha-cartao">
+      <div class="cracha-furo" title="Furo do cordão"></div>
       <div class="cracha-topo">
         {% if config.logo_path %}
           <img src="{{ url_for('static', filename=config.logo_path) }}" class="cracha-logo" alt="">
