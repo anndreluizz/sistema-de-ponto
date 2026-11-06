@@ -81,8 +81,8 @@
           <div class="col-md-4">
             <label for="novo_funcionario_id" class="form-label small mb-1">Funcionário</label>
             <select id="novo_funcionario_id" name="funcionario_id" class="form-select" required>
-              <option value="" disabled selected>Selecione</option>
-              {% for f in funcionarios %}<option value="{{ f.id }}">{{ f.nome }}</option>{% endfor %}
+              <option value="" disabled {{ "" if funcionario_id else "selected" }}>Selecione</option>
+              {% for f in funcionarios %}<option value="{{ f.id }}" {{ "selected" if funcionario_id == f.id|string else "" }}>{{ f.nome }}</option>{% endfor %}
             </select>
           </div>
           <div class="col-6 col-md-2">
@@ -106,7 +106,7 @@
     </form>
   </div>
 
-  <div class="collapse" id="form-justificativa">
+  <div class="collapse {{ 'show' if aba == 'justificativas' else '' }}" id="form-justificativa">
     <form method="post" action="{{ url_for('nova_ausencia') }}" class="card mb-3 sem-impressao">
       {{ csrf_input() }}
       <div class="card-body">
@@ -116,8 +116,8 @@
           <div class="col-md-4">
             <label class="form-label small mb-1" for="campo-funcionario-id">Funcionário</label>
             <select id="campo-funcionario-id" name="funcionario_id" class="form-select" required>
-              <option value="" disabled selected>Selecione</option>
-              {% for f in funcionarios %}<option value="{{ f.id }}">{{ f.nome }}</option>{% endfor %}
+              <option value="" disabled {{ "" if funcionario_id else "selected" }}>Selecione</option>
+              {% for f in funcionarios %}<option value="{{ f.id }}" {{ "selected" if funcionario_id == f.id|string else "" }}>{{ f.nome }}</option>{% endfor %}
             </select>
           </div>
           <div class="col-6 col-md-2">
@@ -170,6 +170,7 @@
   </form>
 
   {% set abrir_pendencias = aba == 'pendencias' %}
+  {% set abrir_just = aba == 'justificativas' %}
   <ul class="nav nav-tabs mb-0" role="tablist">
     <li class="nav-item" role="presentation">
       <button class="nav-link {{ 'active' if abrir_pendencias else '' }}" data-bs-toggle="tab" data-bs-target="#aba-pendencias" type="button" role="tab">
@@ -177,10 +178,10 @@
       </button>
     </li>
     <li class="nav-item" role="presentation">
-      <button class="nav-link {{ '' if abrir_pendencias else 'active' }}" data-bs-toggle="tab" data-bs-target="#aba-batidas" type="button" role="tab">Batidas</button>
+      <button class="nav-link {{ '' if abrir_pendencias or abrir_just else 'active' }}" data-bs-toggle="tab" data-bs-target="#aba-batidas" type="button" role="tab">Batidas</button>
     </li>
     <li class="nav-item" role="presentation">
-      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#aba-justificativas" type="button" role="tab">
+      <button class="nav-link {{ 'active' if abrir_just else '' }}" data-bs-toggle="tab" data-bs-target="#aba-justificativas" type="button" role="tab">
         Justificativas{% if ausencias %} <span class="badge rounded-pill text-bg-light border">{{ ausencias|length }}</span>{% endif %}
       </button>
     </li>
@@ -203,7 +204,7 @@
       <p class="small text-secondary mt-2 mb-0">"Sem saída" é dia que já acabou com entrada e sem saída. "Em andamento" só aparece no dia de hoje.</p>
     </div>
 
-    <div class="tab-pane fade {{ '' if abrir_pendencias else 'show active' }}" id="aba-batidas" role="tabpanel">
+    <div class="tab-pane fade {{ '' if abrir_pendencias or abrir_just else 'show active' }}" id="aba-batidas" role="tabpanel">
       <div class="card card-aba">
         <div class="table-responsive">
           <table class="table table-hover align-middle mb-0">
@@ -218,7 +219,7 @@
       </div>
     </div>
 
-    <div class="tab-pane fade" id="aba-justificativas" role="tabpanel">
+    <div class="tab-pane fade {{ 'show active' if abrir_just else '' }}" id="aba-justificativas" role="tabpanel">
       <div class="card card-aba">
         <div class="table-responsive">
           <table class="table align-middle mb-0">

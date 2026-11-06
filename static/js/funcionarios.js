@@ -9,7 +9,8 @@
   var campoBusca = document.getElementById("busca-funcionario");
   var filtroSituacao = document.getElementById("filtro-situacao");
   var filtroSetor = document.getElementById("filtro-setor");
-  var filtroTurno = document.getElementById("filtro-turno");
+  var chips = Array.prototype.slice.call(document.querySelectorAll(".chip-categoria"));
+  var categoria = "";
   var paginacaoEl = document.getElementById("paginacao-funcionarios");
   var contadorEl = document.getElementById("contador-funcionarios");
   var paginaAtual = 1;
@@ -19,7 +20,7 @@
     if (termo && linha.dataset.busca.indexOf(termo) === -1) return false;
     if (filtroSituacao.value && linha.dataset.situacao !== filtroSituacao.value) return false;
     if (filtroSetor.value && linha.dataset.setor !== filtroSetor.value) return false;
-    if (filtroTurno.value && linha.dataset.turno !== filtroTurno.value) return false;
+    if (categoria && linha.dataset.categoria !== categoria) return false;
     return true;
   }
 
@@ -63,7 +64,19 @@
     }
   }
 
-  [campoBusca, filtroSituacao, filtroSetor, filtroTurno].forEach(function (elemento) {
+  chips.forEach(function (chip) {
+    chip.addEventListener("click", function () {
+      categoria = chip.dataset.categoria;
+      chips.forEach(function (c) {
+        c.classList.toggle("active", c === chip);
+        c.setAttribute("aria-pressed", c === chip ? "true" : "false");
+      });
+      paginaAtual = 1;
+      renderizar();
+    });
+  });
+
+  [campoBusca, filtroSituacao, filtroSetor].forEach(function (elemento) {
     if (elemento) {
       elemento.addEventListener("input", function () {
         paginaAtual = 1;

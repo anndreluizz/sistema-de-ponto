@@ -12,8 +12,10 @@
 
   if (window.countUp) {
     document.querySelectorAll(".painel-valor").forEach(function (el) {
+      // so' numero inteiro puro: "08:00" e "-24:00" (horas) ficam como estao
+      if (!/^\s*-?\d+\s*$/.test(el.textContent)) return;
       var valor = parseInt(el.textContent, 10);
-      if (isNaN(valor) || valor === 0) return;
+      if (valor === 0) return;
       new countUp.CountUp(el, valor, { duration: 1.2, separator: "." }).start();
     });
   }

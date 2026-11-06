@@ -128,14 +128,17 @@ entrar de novo com usuario e senha.
 
 DASHBOARD, RELATORIOS E AJUSTES DE PONTO
 -------------------------------------------
-- "Dashboard": visao geral do dia — presentes, ausentes, atrasos, faltas,
-  quem esta em intervalo, saidas antecipadas, em ferias/licenca/atestado
-  hoje e as horas extras do dia. Tem grafico de presenca (alternando entre
-  7 e 30 dias) e grafico de presenca por setor, alem de atalhos rapidos
-  para as telas mais usadas. Mais embaixo, um grafico "Comparativo mensal"
-  mostra horas trabalhadas, faltas e atrasos dos ultimos 6 meses fechados
-  da escola inteira, e um "Ranking de pontualidade" (visivel pra quem edita
-  cadastros) mostra os funcionarios com mais atraso acumulado no periodo.
+- "Hoje" (painel): presentes, quem ainda nao chegou, atrasados, intervalo
+  e as ultimas batidas. Em "Pendencias para resolver" aparece quem ficou
+  SEM SAIDA num dia que ja acabou (entrou e esqueceu de bater a saida):
+  o botao "Lancar saida" abre o Ajuste ja preenchido com o fim do turno.
+  "Em andamento" so aparece no dia de hoje.
+- Ficha do funcionario: clique no nome (em Funcionarios, Relatorios ou no
+  Hoje). Mostra o mes da pessoa (trabalhado, saldo, faltas, atrasos, sem
+  saida), o dia a dia com falta/folga/justificativa, o banco de horas e
+  atalhos para ajustar batidas, cracha e espelho do mes em PDF.
+- "Funcionarios": filtro por categoria (Gestao, Professores...), a coluna
+  "Hoje" (presente, atrasou, nao chegou...) e o saldo e as faltas do mes.
 - "Relatorios" (Central de Relatorios): resumos por periodo, agrupados por
   funcionario/setor/cargo/turno, em 6 visoes (frequencia, faltas, atrasos,
   horas extras, banco de horas, ausencias). Exporta em PDF, Excel ou

@@ -62,6 +62,7 @@ def relatorios():
         return render_template(
             "central_relatorios.html",
             linhas=linhas,
+            formatar_horas=relatorios_service.formatar_horas,
             funcionarios=funcionarios_lista,
             atalhos=atalhos,
             data_inicio=data_inicio,

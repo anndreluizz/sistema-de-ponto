@@ -61,6 +61,15 @@
     </div>
   </form>
 
+  {% if visao == "frequencia" and linhas %}
+    {% set total_saldo = linhas | sum(attribute='saldo_seg') %}
+    <div class="painel-numeros mb-3 sem-impressao">
+      <div class="painel-numero"><span class="painel-valor {{ 'text-danger' if linhas|sum(attribute='faltas') else '' }}">{{ linhas | sum(attribute='faltas') }}</span><span class="painel-rotulo">Faltas no período</span></div>
+      <div class="painel-numero"><span class="painel-valor {{ 'text-warning-emphasis' if linhas|sum(attribute='atrasos') else '' }}">{{ linhas | sum(attribute='atrasos') }}</span><span class="painel-rotulo">Atrasos</span></div>
+      <div class="painel-numero"><span class="painel-valor {{ 'text-danger' if total_saldo < 0 else 'text-success' }}">{{ formatar_horas(total_saldo) }}</span><span class="painel-rotulo">Saldo de horas de todos</span></div>
+    </div>
+  {% endif %}
+
   <div class="d-flex flex-wrap align-items-center gap-2 mb-2 sem-impressao">
     <h2 class="h6 fw-bold mb-0 me-auto">{{ nomes_visao[visao] }} · {{ data_inicio[8:] }}/{{ data_inicio[5:7] }} a {{ data_fim[8:] }}/{{ data_fim[5:7] }}</h2>
     <a class="btn btn-sm btn-light border"
@@ -69,6 +78,9 @@
        href="{{ url_for('relatorios_exportar_excel', data_inicio=data_inicio, data_fim=data_fim, agrupar_por=agrupar_por, visao=visao, funcionario_id=funcionario_id) }}">Excel</a>
     <button type="button" class="btn btn-sm btn-light border" onclick="window.print()">Imprimir</button>
   </div>
+  {% if visao == "frequencia" and agrupar_por == "funcionario" %}
+    <p class="small text-secondary mb-2 sem-impressao">Quem tem mais faltas e atrasos aparece primeiro. Clique no nome para abrir a ficha.</p>
+  {% endif %}
   <div class="card">
     <div class="table-responsive">
       <table class="table table-hover align-middle mb-0">
@@ -76,7 +88,8 @@
           <tr>
             <th>{{ {"funcionario": "Funcionário", "setor": "Setor", "cargo": "Cargo", "turno": "Turno"}.get(agrupar_por, "Funcionário") }}</th>
             {% if visao == "frequencia" %}
-              <th>Dias com ponto</th><th>Faltas</th><th>Atrasos</th><th>Horas trabalhadas</th>
+              <th class="text-end">Dias com ponto</th><th class="text-end">Faltas</th><th class="text-end">Atrasos</th>
+              <th class="text-end">Esperado</th><th class="text-end">Trabalhado</th><th class="text-end">Saldo</th>
             {% elif visao == "faltas" %}
               <th>Dias úteis</th><th>Faltas</th><th>% de faltas</th>
             {% elif visao == "atrasos" %}
@@ -93,10 +106,17 @@
         </thead>
         <tbody>
           {% for linha in linhas %}
-            <tr>
-              <td>{{ linha.dimensao }}</td>
+            <tr class="{{ 'linha-pendente' if visao == 'frequencia' and linha.faltas else '' }}">
+              <td>
+                {% if linha.funcionario_id %}<a href="{{ url_for('ficha_funcionario', funcionario_id=linha.funcionario_id) }}" class="link-ficha">{{ linha.dimensao }}</a>{% else %}{{ linha.dimensao }}{% endif %}
+              </td>
               {% if visao == "frequencia" %}
-                <td>{{ linha.dias_com_ponto }}</td><td>{{ linha.faltas }}</td><td>{{ linha.atrasos }}</td><td>{{ linha.horas_trabalhadas }}</td>
+                <td class="text-end num text-secondary">{{ linha.dias_com_ponto }}</td>
+                <td class="text-end"><span class="num {{ 'selo-num selo-num-falta' if linha.faltas else 'text-secondary' }}">{{ linha.faltas }}</span></td>
+                <td class="text-end"><span class="num {{ 'selo-num selo-num-atraso' if linha.atrasos else 'text-secondary' }}">{{ linha.atrasos }}</span></td>
+                <td class="text-end num text-secondary">{{ linha.horas_esperadas }}</td>
+                <td class="text-end num">{{ linha.horas_trabalhadas }}</td>
+                <td class="text-end num fw-bold {{ 'text-danger' if linha.saldo_seg < 0 else ('text-success' if linha.saldo_seg > 0 else '') }}">{{ linha.saldo }}</td>
               {% elif visao == "faltas" %}
                 <td>{{ linha.dias_uteis }}</td><td>{{ linha.faltas }}</td><td>{{ linha.percentual_faltas }}%</td>
               {% elif visao == "atrasos" %}

@@ -574,3 +574,29 @@ def test_marcar_sem_saida_so_em_dia_que_ja_acabou():
     assert [d["sem_saida"] for d in dias] == [False, True, False, False, True]
     assert dias[1]["sugestao_saida"] == "2026-11-05T16:00"
     assert dias[4]["sugestao_saida"] == "2026-11-05T07:00"
+
+
+def test_frequencia_tem_esperado_saldo_e_mostra_quem_tem_problema_primeiro(conn, cenario_semana):
+    linhas = montar_linhas_central(conn, "2026-01-05", "2026-01-09", "funcionario", "frequencia")
+    assert [l["dimensao"] for l in linhas] == ["Beto Testado", "Ana Pontual"]
+    beto = linhas[0]
+    assert beto["horas_esperadas"] == "32:00"  # quinta de férias não conta
+    assert beto["saldo"] == "-07:25" and beto["saldo_seg"] < 0
+    assert linhas[1]["saldo"] == "00:00"
+
+
+def test_ficha_do_mes_mostra_falta_atraso_e_justificativa(conn, cenario_semana):
+    from datetime import date as _date
+    from relatorios_service import montar_ficha_mes
+
+    ficha = montar_ficha_mes(conn, cenario_semana["beto_id"], 2026, 1, hoje=_date(2026, 1, 9))
+    # mesma conta do relatório do período (o mês todo, desde o dia 1o)
+    relatorio = {l["dimensao"]: l for l in montar_linhas_central(conn, "2026-01-01", "2026-01-09", "funcionario", "frequencia")}
+    assert ficha["faltas"] == relatorio["Beto Testado"]["faltas"]
+    assert ficha["atrasos"] == relatorio["Beto Testado"]["atrasos"] == 1
+    assert ficha["trabalhado_seg"] - ficha["esperado_seg"] == relatorio["Beto Testado"]["saldo_seg"]
+    assert len(ficha["justificativas"]) == 1
+    selos = {d["data"].isoformat(): d["selo"] for d in ficha["dias"]}
+    assert selos["2026-01-07"] == "falta"
+    assert selos["2026-01-08"] == "justificada"
+    assert ficha["dias"][0]["data"] == _date(2026, 1, 9)  # mais recente primeiro

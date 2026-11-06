@@ -88,7 +88,7 @@
             <div class="painel-linha">
               {{ avatar(f, 32) }}
               <div class="flex-grow-1">
-                <div class="fw-semibold">{{ f.nome }}</div>
+                <a class="fw-semibold link-ficha d-block" href="{{ url_for('ficha_funcionario', funcionario_id=f.id) }}">{{ f.nome }}</a>
                 <div class="small text-secondary">{{ f.cargo or '—' }}</div>
               </div>
               {% if f.id in atrasados_ids %}

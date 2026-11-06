@@ -784,3 +784,16 @@ def test_dia_passado_sem_saida_vira_pendencia_no_painel_e_nos_ajustes(cliente):
     ajustes = cliente.get(f"/admin/ajustes?aba=pendencias&data_inicio={ontem}").get_data(as_text=True)
     assert "+ lançar saída" in ajustes
     assert "em andamento" not in ajustes
+
+
+def test_ficha_e_lista_de_funcionarios_abrem(cliente):
+    funcionario_id = _criar_funcionario("FICHA001")
+    _criar_usuario("admin_ficha", "SenhaForte123!", "administrador")
+    _login(cliente, "admin_ficha", "SenhaForte123!")
+
+    ficha = cliente.get(f"/admin/funcionarios/{funcionario_id}")
+    assert ficha.status_code == 200 and "Dia a dia" in ficha.get_data(as_text=True)
+    assert cliente.get(f"/admin/funcionarios/{funcionario_id}?mes=lixo").status_code == 200
+    assert cliente.get("/admin/funcionarios/99999").status_code == 404
+    lista = cliente.get("/admin/funcionarios").get_data(as_text=True)
+    assert f"/admin/funcionarios/{funcionario_id}\"" in lista
