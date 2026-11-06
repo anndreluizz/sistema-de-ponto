@@ -89,7 +89,7 @@ def calcular_dashboard(conn):
 
             dia_hoje = dias_por_funcionario_hoje.get(fid)
             pares_hoje = dia_hoje["pares"] if dia_hoje else []
-            _entrada_hoje, _saida_almoco_hoje, _retorno_hoje, saida_hoje = relatorios_service.preencher_colunas_historico(
+            entrada_hoje, _saida_almoco_hoje, _retorno_hoje, saida_hoje = relatorios_service.preencher_colunas_historico(
                 pares_hoje
             )
             lunch_configurado = bool(f["horario_saida_almoco"] and f["horario_retorno_almoco"])
@@ -108,14 +108,13 @@ def calcular_dashboard(conn):
 
             if esta_em_intervalo:
                 em_intervalo.append(f)
-            elif saida_hoje is not None and f["tolerancia_saida_minutos"] is not None:
-                limite_saida_antecipada = (
-                    datetime.strptime(f["horario_saida"], "%H:%M")
-                    - timedelta(minutes=f["tolerancia_saida_minutos"])
-                ).time()
-                saida_hora = datetime.strptime(saida_hoje["timestamp"], "%Y-%m-%d %H:%M:%S").time()
-                if saida_hora < limite_saida_antecipada:
-                    saidas_antecipadas.append(f)
+            elif (
+                saida_hoje is not None and f["tolerancia_saida_minutos"] is not None
+                and relatorios_service.saiu_antes_da_hora(
+                    entrada_hoje, saida_hoje, f["horario_entrada"], f["horario_saida"], f["tolerancia_saida_minutos"],
+                )
+            ):
+                saidas_antecipadas.append(f)
 
     def _ativos_com_ausencia_hoje(*tipos):
         marcadores = ",".join("?" * len(tipos))

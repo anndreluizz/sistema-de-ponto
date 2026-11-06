@@ -472,7 +472,7 @@ def cracha_funcionario(funcionario_id):
 @login_obrigatorio
 @perfil_obrigatorio(*PERFIS_LEITURA)
 def crachas_em_massa():
-    """Crachás de todos os ativos (ou de uma categoria), 10 por folha A4."""
+    """Crachás de todos os ativos (ou de uma categoria), em folhas A4."""
     categoria = request.args.get("categoria", "").strip()
     conn = db.get_db()
     try:

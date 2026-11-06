@@ -533,3 +533,21 @@ def test_saida_muito_depois_da_entrada_nao_junta_dias():
     dias = agrupar_registros_por_dia([r("entrada", "2026-11-02 07:00:00"), r("saida", "2026-11-03 11:30:00")])
 
     assert len(dias) == 2
+
+
+def test_saida_antecipada_no_plantao_que_passa_da_meia_noite():
+    from relatorios_service import saiu_antes_da_hora
+
+    def reg(ts):
+        return {"timestamp": ts}
+
+    # plantao 19:00-07:00, tolerancia 10 min: saiu 23:00 do mesmo dia = antes da hora
+    assert saiu_antes_da_hora(reg("2026-11-05 19:00:00"), reg("2026-11-05 23:00:00"), "19:00", "07:00", 10)
+    # saiu 06:55 do dia seguinte = dentro da tolerancia
+    assert not saiu_antes_da_hora(reg("2026-11-05 19:00:00"), reg("2026-11-06 06:55:00"), "19:00", "07:00", 10)
+    # saida da manha sem a entrada no grupo (painel de hoje): conta no proprio dia
+    assert not saiu_antes_da_hora(None, reg("2026-11-06 07:00:00"), "07:00", "07:00", 10)
+    assert saiu_antes_da_hora(None, reg("2026-11-06 06:30:00"), "07:00", "07:00", 10)
+    # turno normal continua igual
+    assert saiu_antes_da_hora(reg("2026-11-06 07:00:00"), reg("2026-11-06 16:00:00"), "07:00", "17:00", 10)
+    assert not saiu_antes_da_hora(reg("2026-11-06 07:00:00"), reg("2026-11-06 16:55:00"), "07:00", "17:00", 10)

@@ -314,6 +314,21 @@ def calcular_atalhos_periodo(hoje=None):
     }
 
 
+def saiu_antes_da_hora(entrada, saida, horario_entrada, horario_saida, tolerancia_saida_minutos):
+    """A saida foi antes do fim do turno (menos a tolerancia)? O fim conta a partir do dia da
+    entrada: no plantao que passa da meia-noite (saida <= entrada, ex.: 19:00-07:00) e' no dia
+    seguinte. Sem entrada no grupo (saida da manha que fecha o plantao de ontem), e' no dia da saida."""
+    saida_ts = datetime.strptime(saida["timestamp"], "%Y-%m-%d %H:%M:%S")
+    hora_fim = datetime.strptime(horario_saida, "%H:%M").time()
+    if entrada is not None:
+        fim = datetime.combine(datetime.strptime(entrada["timestamp"], "%Y-%m-%d %H:%M:%S").date(), hora_fim)
+        if horario_saida <= horario_entrada:
+            fim += timedelta(days=1)
+    else:
+        fim = datetime.combine(saida_ts.date(), hora_fim)
+    return saida_ts < fim - timedelta(minutes=tolerancia_saida_minutos)
+
+
 def preencher_colunas_historico(pares):
     """Sempre retorna (entrada, saida_almoco, retorno, saida) a partir dos pares de um dia."""
     if len(pares) == 2:
@@ -741,14 +756,11 @@ def calcular_stats_funcionarios_periodo(conn, data_inicio, data_fim, funcionario
                             atraso_acumulado_seg += (
                                 datetime.combine(d["data"], chegada) - datetime.combine(d["data"], limite_entrada)
                             ).total_seconds()
-                    if saida_dia and fd["tolerancia_saida_minutos"] is not None:
-                        limite_saida = (
-                            datetime.strptime(fd["horario_saida"], "%H:%M")
-                            - timedelta(minutes=fd["tolerancia_saida_minutos"])
-                        ).time()
-                        saida_hora = datetime.strptime(saida_dia["timestamp"], "%Y-%m-%d %H:%M:%S").time()
-                        if saida_hora < limite_saida:
-                            saidas_antecipadas += 1
+                    if saida_dia and fd["tolerancia_saida_minutos"] is not None and saiu_antes_da_hora(
+                        entrada_dia, saida_dia, fd["horario_entrada"], fd["horario_saida"],
+                        fd["tolerancia_saida_minutos"],
+                    ):
+                        saidas_antecipadas += 1
                 horas_extras_seg += max(0, d["total_segundos"] - horas_esperadas_dia)
 
         # Hoje e dias futuros só entram se já houver ponto: ainda não dá pra chamar de falta.
