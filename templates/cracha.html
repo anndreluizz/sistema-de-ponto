@@ -3,40 +3,48 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Crachá - {{ funcionario.nome }}</title>
+  <title>Crachá{{ 's' if funcionarios|length > 1 }} - {{ funcionarios[0].nome if funcionarios|length == 1 else funcionarios|length ~ ' funcionários' }}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap/bootstrap.min.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap-icons/bootstrap-icons.min.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='vendor/inter/fonts.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+  <style>@page { size: A4; margin: 8mm; }</style>
 </head>
 <body class="cracha-pagina">
   {% set foto_padrao = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23e5e9ee'/><circle cx='50' cy='38' r='18' fill='%23aab2bd'/><path d='M50 62c-22 0-34 12-34 26v6h68v-6c0-14-12-26-34-26z' fill='%23aab2bd'/></svg>" %}
 
-  <div class="cracha-cartao">
-    <div class="cracha-topo">
-      {% if config.logo_path %}
-        <img src="{{ url_for('static', filename=config.logo_path) }}" class="cracha-logo" alt="Logo da instituição">
-      {% endif %}
-      <div class="cracha-instituicao">{{ config.nome_instituicao or "Ponto Eletrônico" }}</div>
-    </div>
-    <div class="cracha-corpo">
-      <img src="{{ url_for('arquivo_privado', pasta='fotos', nome=funcionario.foto.split('/')[-1]) if funcionario.foto else foto_padrao }}"
-           class="cracha-foto" alt="Foto de {{ funcionario.nome }}">
-      <div class="cracha-nome">{{ funcionario.nome }}</div>
-      <div class="cracha-cargo">{{ funcionario.cargo }}{% if funcionario.setor_nome %} · {{ funcionario.setor_nome }}{% endif %}</div>
-      {% if funcionario.matricula %}<div class="cracha-matricula">Matrícula {{ funcionario.matricula }}</div>{% endif %}
-      <img class="cracha-qr" src="{{ url_for('arquivo_privado', pasta='qrcodes', nome=funcionario.id ~ '.png') }}" alt="QR Code">
-    </div>
-    {% if config.rodape_cracha %}
-      <div class="cracha-rodape">{{ config.rodape_cracha }}</div>
-    {% endif %}
-  </div>
-
-  <div class="sem-impressao d-flex gap-2">
+  <div class="sem-impressao d-flex flex-wrap gap-2 align-items-center">
     <button class="btn btn-primary" onclick="window.print()" type="button">
-      <i class="bi bi-printer me-1"></i>Imprimir crachá
+      <i class="bi bi-printer me-1"></i>Imprimir {{ funcionarios|length }} crachá{{ 's' if funcionarios|length > 1 }}
     </button>
     <a href="{{ url_for('funcionarios') }}" class="btn btn-outline-secondary">Voltar</a>
+    <span class="text-secondary small">Tamanho cartão (85,6 × 54 mm), 10 por folha A4. Na impressão, use escala 100% ("Tamanho real").</span>
+  </div>
+
+  <div class="cracha-folha">
+    {% for funcionario in funcionarios %}
+    <div class="cracha-cartao">
+      <div class="cracha-topo">
+        {% if config.logo_path %}
+          <img src="{{ url_for('static', filename=config.logo_path) }}" class="cracha-logo" alt="">
+        {% endif %}
+        <span class="cracha-instituicao">{{ config.nome_instituicao or "Ponto Eletrônico" }}</span>
+      </div>
+      <div class="cracha-corpo">
+        <div class="cracha-dados">
+          <img src="{{ url_for('arquivo_privado', pasta='fotos', nome=funcionario.foto.split('/')[-1]) if funcionario.foto else foto_padrao }}"
+               class="cracha-foto" alt="Foto de {{ funcionario.nome }}">
+          <div class="cracha-nome">{{ funcionario.nome }}</div>
+          <div class="cracha-cargo">{{ funcionario.cargo }}{% if funcionario.setor_nome %} · {{ funcionario.setor_nome }}{% endif %}</div>
+          {% if funcionario.matricula %}<div class="cracha-matricula">Matrícula {{ funcionario.matricula }}</div>{% endif %}
+        </div>
+        <img class="cracha-qr" src="{{ url_for('arquivo_privado', pasta='qrcodes', nome=funcionario.id ~ '.png') }}" alt="QR Code">
+      </div>
+      {% if config.rodape_cracha %}
+        <div class="cracha-rodape">{{ config.rodape_cracha }}</div>
+      {% endif %}
+    </div>
+    {% endfor %}
   </div>
 
   <script>

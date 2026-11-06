@@ -752,3 +752,19 @@ def test_turno_normal_entrada_esquecida_ontem_hoje_comeca_com_entrada(cliente):
     _autorizar_totem(cliente, "admin_normal")
 
     assert cliente.post("/api/bater-ponto", json={"codigo": "NORMAL123"}).get_json()["tipo"] == "entrada"
+
+
+def test_crachas_em_massa_lista_so_ativos_da_categoria(cliente):
+    conexao = db_module.get_db()
+    conexao.execute("INSERT INTO funcionarios (nome, codigo, situacao, categoria) VALUES ('Prof Ativo', 'C1', 'ativo', 'professor')")
+    conexao.execute("INSERT INTO funcionarios (nome, codigo, situacao, categoria) VALUES ('Prof Inativo', 'C2', 'inativo', 'professor')")
+    conexao.execute("INSERT INTO funcionarios (nome, codigo, situacao, categoria) VALUES ('Vigia Ativo', 'C3', 'ativo', 'outro')")
+    conexao.commit()
+    conexao.close()
+    _criar_usuario("admin_cracha", "SenhaForte123!", "administrador")
+    _login(cliente, "admin_cracha", "SenhaForte123!")
+
+    html = cliente.get("/admin/funcionarios/crachas?categoria=professor").get_data(as_text=True)
+    assert "Prof Ativo" in html and "Prof Inativo" not in html and "Vigia Ativo" not in html
+    todos = cliente.get("/admin/funcionarios/crachas").get_data(as_text=True)
+    assert todos.count('class="cracha-cartao"') == 2
