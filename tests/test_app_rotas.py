@@ -691,3 +691,64 @@ def test_aviso_backup_fora_do_pc(cliente, tmp_path, monkeypatch):
     _criar_usuario("admin_bkp", "SenhaForte123!", "administrador")
     _login(cliente, "admin_bkp", "SenhaForte123!")
     assert "só neste computador" in cliente.get("/admin/dashboard").get_data(as_text=True)
+
+
+# --- Plantão que passa da meia-noite (vigia 07:00–07:00) -----------------------
+
+
+def _autorizar_totem(cliente, usuario):
+    _criar_usuario(usuario, "SenhaForte123!", "administrador")
+    _login(cliente, usuario, "SenhaForte123!")
+    token = _csrf_token(cliente.get("/admin/configuracoes").get_data(as_text=True))
+    cliente.post("/admin/totem/autorizar", data={"csrf_token": token})
+    return token
+
+
+def _entrada_ontem_23h59(funcionario_id):
+    from datetime import datetime, timedelta
+
+    ontem = (datetime.now().replace(hour=0, minute=0, second=0) - timedelta(minutes=1)).strftime("%Y-%m-%d %H:%M:%S")
+    conexao = db_module.get_db()
+    conexao.execute(
+        "INSERT INTO registros (funcionario_id, tipo, timestamp, manual) VALUES (?, 'entrada', ?, 0)",
+        (funcionario_id, ontem),
+    )
+    conexao.commit()
+    conexao.close()
+
+
+def test_cadastrar_turno_que_passa_da_meia_noite(cliente):
+    token = _autorizar_totem(cliente, "admin_turno24")
+    cliente.post(
+        "/admin/turnos",
+        data={
+            "csrf_token": token, "nome": "Plantão vigia", "horario_entrada": "07:00", "horario_saida": "07:00",
+            "dias_semana": ["0", "1", "2", "3", "4", "5", "6"],
+        },
+    )
+    conexao = db_module.get_db()
+    assert conexao.execute("SELECT COUNT(*) c FROM turnos WHERE nome = 'Plantão vigia'").fetchone()["c"] == 1
+    conexao.close()
+
+
+def test_plantao_batida_da_manha_seguinte_e_saida(cliente):
+    funcionario_id = _criar_funcionario("VIGIA123")
+    conexao = db_module.get_db()
+    turno_id = conexao.execute(
+        "INSERT INTO turnos (nome, horario_entrada, horario_saida, tolerancia_minutos) VALUES ('plantao', '07:00', '07:00', 10)"
+    ).lastrowid
+    conexao.execute("UPDATE funcionarios SET turno_id = ? WHERE id = ?", (turno_id, funcionario_id))
+    conexao.commit()
+    conexao.close()
+    _entrada_ontem_23h59(funcionario_id)
+    _autorizar_totem(cliente, "admin_vigia")
+
+    assert cliente.post("/api/bater-ponto", json={"codigo": "VIGIA123"}).get_json()["tipo"] == "saida"
+
+
+def test_turno_normal_entrada_esquecida_ontem_hoje_comeca_com_entrada(cliente):
+    funcionario_id = _criar_funcionario("NORMAL123")
+    _entrada_ontem_23h59(funcionario_id)
+    _autorizar_totem(cliente, "admin_normal")
+
+    assert cliente.post("/api/bater-ponto", json={"codigo": "NORMAL123"}).get_json()["tipo"] == "entrada"

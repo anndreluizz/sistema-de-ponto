@@ -509,3 +509,27 @@ def test_renomear_turno_nao_cria_historico(conn):
     conn.execute("UPDATE turnos SET nome = 'tarde (novo nome)' WHERE id = ?", (turno_id,))
     registrar_mudancas_de_jornada(conn, antes)
     assert conn.execute("SELECT COUNT(*) c FROM jornada_historico").fetchone()["c"] == 0
+
+
+def test_plantao_saida_depois_da_meia_noite_conta_no_dia_da_entrada():
+    from relatorios_service import agrupar_registros_por_dia
+
+    def r(tipo, ts):
+        return {"funcionario_id": 1, "funcionario_nome": "Vigia", "tipo": tipo, "timestamp": ts}
+
+    dias = agrupar_registros_por_dia([r("entrada", "2026-11-02 07:00:00"), r("saida", "2026-11-03 07:05:00")])
+
+    assert len(dias) == 1
+    assert dias[0]["data"].isoformat() == "2026-11-02"
+    assert dias[0]["total_horas"] == "24:05"
+
+
+def test_saida_muito_depois_da_entrada_nao_junta_dias():
+    from relatorios_service import agrupar_registros_por_dia
+
+    def r(tipo, ts):
+        return {"funcionario_id": 1, "funcionario_nome": "Ana", "tipo": tipo, "timestamp": ts}
+
+    dias = agrupar_registros_por_dia([r("entrada", "2026-11-02 07:00:00"), r("saida", "2026-11-03 11:30:00")])
+
+    assert len(dias) == 2

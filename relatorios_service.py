@@ -159,6 +159,11 @@ def linhas_para_exportacao(linhas, visao):
     return [[linha["dimensao"]] + [linha.get(chave, "-") for chave in chaves] for linha in linhas]
 
 
+# Plantão que passa da meia-noite (ex.: vigia 07:00–07:00): uma saída até esse tempo depois de
+# uma entrada aberta na véspera fecha aquela entrada (totem e relatórios usam o mesmo limite).
+LIMITE_PLANTAO_HORAS = 26
+
+
 def agrupar_registros_por_dia(registros):
     grupos = {}
     ordem = []
@@ -169,6 +174,18 @@ def agrupar_registros_por_dia(registros):
             grupos[chave] = []
             ordem.append(chave)
         grupos[chave].append(r)
+
+    # O dia que começa com saída, logo após uma véspera que terminou com entrada, é o fim do
+    # plantão: a saída vai para o dia da entrada e as horas contam lá.
+    for chave in sorted(ordem, key=lambda c: (c[0], c[2])):
+        eventos = grupos[chave]
+        vespera = grupos.get((chave[0], chave[1], chave[2] - timedelta(days=1)))
+        if eventos and eventos[0]["tipo"] == "saida" and vespera and vespera[-1]["tipo"] == "entrada":
+            ts_entrada = datetime.strptime(vespera[-1]["timestamp"], "%Y-%m-%d %H:%M:%S")
+            ts_saida = datetime.strptime(eventos[0]["timestamp"], "%Y-%m-%d %H:%M:%S")
+            if ts_saida - ts_entrada <= timedelta(hours=LIMITE_PLANTAO_HORAS):
+                vespera.append(eventos.pop(0))
+    ordem = [c for c in ordem if grupos[c]]
 
     dias = []
     for chave in ordem:

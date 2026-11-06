@@ -234,9 +234,7 @@ def _ler_dados_turno_form():
 def _validar_dados_turno(dados):
     if not dados["nome"] or not dados["horario_entrada"] or not dados["horario_saida"]:
         return "Preencha nome, horário de entrada e de saída."
-    if dados["horario_saida"] <= dados["horario_entrada"]:
-        # ponytail: turno que vira a meia-noite não é suportado (totem e cálculos agrupam por data).
-        return "O horário de saída precisa ser depois da entrada (turno que passa da meia-noite não é suportado)."
+    # Saída antes (ou igual) da entrada = turno que passa da meia-noite (ex.: vigia 07:00–07:00 = 24h).
     if not dados["dias_semana"]:
         return "Marque pelo menos um dia da semana."
     if bool(dados["horario_saida_almoco"]) != bool(dados["horario_retorno_almoco"]):
