@@ -201,8 +201,10 @@ TURNOS, ESCALAS E BANCO DE HORAS
 - Trocar o turno/escala de alguem, ou editar o horario de um turno/escala,
   vale A PARTIR DE HOJE: o sistema guarda a jornada antiga e continua
   usando ela para calcular os dias anteriores (atrasos, faltas, horas
-  extras e banco de horas do passado nao mudam). Turno que passa da
-  meia-noite nao e suportado.
+  extras e banco de horas do passado nao mudam).
+- Turno que passa da meia-noite (ex.: vigia que entra 07:00 e sai 07:00 do
+  dia seguinte): cadastre a saida menor ou igual a entrada. A batida da
+  manha seguinte vira "saida" e as horas contam no dia da entrada.
 - "Banco de horas": cada funcionario tem uma tela propria (menu de acoes
   em "Funcionarios" → "Banco de horas") com o extrato dia a dia (horas
   trabalhadas, esperadas, diferenca e saldo acumulado) e onde da pra

@@ -8,11 +8,26 @@
       <h1 class="h3 fw-bold mb-1">Funcionários</h1>
       <p class="text-secondary mb-0" id="contador-funcionarios"></p>
     </div>
-    {% if session.usuario_perfil in ('administrador', 'rh') %}
-      <a href="{{ url_for('novo_funcionario') }}" class="btn btn-primary">
-        <i class="bi bi-person-plus me-1"></i> Novo funcionário
-      </a>
-    {% endif %}
+    <div class="d-flex flex-wrap gap-2">
+      <div class="dropdown">
+        <button class="btn btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+          <i class="bi bi-printer me-1"></i> Imprimir crachás
+        </button>
+        <ul class="dropdown-menu">
+          <li><a class="dropdown-item" href="{{ url_for('crachas_em_massa') }}" target="_blank">Todos os ativos</a></li>
+          <li><hr class="dropdown-divider"></li>
+          <li><a class="dropdown-item" href="{{ url_for('crachas_em_massa', categoria='gestao') }}" target="_blank">Gestão</a></li>
+          <li><a class="dropdown-item" href="{{ url_for('crachas_em_massa', categoria='apoio_pedagogico') }}" target="_blank">Apoio Pedagógico</a></li>
+          <li><a class="dropdown-item" href="{{ url_for('crachas_em_massa', categoria='professor') }}" target="_blank">Professores</a></li>
+          <li><a class="dropdown-item" href="{{ url_for('crachas_em_massa', categoria='outro') }}" target="_blank">Outros funcionários</a></li>
+        </ul>
+      </div>
+      {% if session.usuario_perfil in ('administrador', 'rh') %}
+        <a href="{{ url_for('novo_funcionario') }}" class="btn btn-primary">
+          <i class="bi bi-person-plus me-1"></i> Novo funcionário
+        </a>
+      {% endif %}
+    </div>
   </div>
 
   <div class="card mb-3">

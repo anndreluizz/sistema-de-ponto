@@ -465,7 +465,32 @@ def cracha_funcionario(funcionario_id):
     if not funcionario:
         abort(404)
 
-    return render_template("cracha.html", funcionario=funcionario, config=config)
+    return render_template("cracha.html", funcionarios=[funcionario], config=config)
+
+
+@app.route("/admin/funcionarios/crachas")
+@login_obrigatorio
+@perfil_obrigatorio(*PERFIS_LEITURA)
+def crachas_em_massa():
+    """Crachás de todos os ativos (ou de uma categoria), 10 por folha A4."""
+    categoria = request.args.get("categoria", "").strip()
+    conn = db.get_db()
+    try:
+        funcionarios = conn.execute(
+            """SELECT funcionarios.*, setores.nome AS setor_nome
+               FROM funcionarios LEFT JOIN setores ON setores.id = funcionarios.setor_id
+               WHERE funcionarios.situacao = 'ativo' AND (? = '' OR COALESCE(funcionarios.categoria, 'outro') = ?)
+               ORDER BY funcionarios.nome""",
+            (categoria, categoria),
+        ).fetchall()
+        config = conn.execute("SELECT * FROM configuracoes WHERE id = 1").fetchone()
+    finally:
+        conn.close()
+
+    if not funcionarios:
+        flash("Nenhum funcionário ativo para imprimir crachá.", "erro")
+        return redirect(url_for("funcionarios"))
+    return render_template("cracha.html", funcionarios=funcionarios, config=config)
 
 
 @app.route("/admin/funcionarios/<int:funcionario_id>/historico")

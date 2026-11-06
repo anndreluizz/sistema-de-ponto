@@ -3,7 +3,7 @@
 import base64
 import hashlib
 import secrets
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from flask import (
     abort, flash, jsonify, redirect, render_template, request, send_file, send_from_directory, session, url_for,
@@ -11,6 +11,7 @@ from flask import (
 import db
 
 import nucleo
+import relatorios_service
 from nucleo import (
     COOKIE_TOTEM,
     COOLDOWN_SEGUNDOS,
@@ -150,6 +151,16 @@ def foto_batida(registro_id):
     return send_file(_caminho_foto_batida(registro["id"], registro["timestamp"]), mimetype="image/jpeg")
 
 
+def _turno_passa_da_meia_noite(conn, funcionario):
+    """Turno direto ou da escala com saída antes (ou igual) da entrada, ex.: 07:00–07:00."""
+    turno = conn.execute(
+        """SELECT horario_entrada, horario_saida FROM turnos
+           WHERE id = COALESCE(?, (SELECT turno_id FROM escalas WHERE id = ?))""",
+        (funcionario["turno_id"], funcionario["escala_id"]),
+    ).fetchone()
+    return turno is not None and turno["horario_saida"] <= turno["horario_entrada"]
+
+
 @app.route("/api/bater-ponto", methods=["POST"])
 @csrf.exempt
 def api_bater_ponto():
@@ -200,6 +211,21 @@ def api_bater_ponto():
                ORDER BY timestamp DESC LIMIT 1""",
             (funcionario["id"], inicio_do_dia),
         ).fetchone()
+
+        if ultimo is None and _turno_passa_da_meia_noite(conn, funcionario):
+            # Plantão (ex.: vigia 07:00–07:00): a entrada de ontem ainda aberta é fechada agora.
+            vespera = conn.execute(
+                """SELECT * FROM registros
+                   WHERE funcionario_id = ? AND timestamp >= ? AND timestamp < ?
+                   ORDER BY timestamp DESC LIMIT 1""",
+                (
+                    funcionario["id"],
+                    (agora - timedelta(hours=relatorios_service.LIMITE_PLANTAO_HORAS)).strftime("%Y-%m-%d %H:%M:%S"),
+                    inicio_do_dia,
+                ),
+            ).fetchone()
+            if vespera is not None and vespera["tipo"] == "entrada":
+                ultimo = vespera
 
         if ultimo:
             ultimo_ts = datetime.strptime(ultimo["timestamp"], "%Y-%m-%d %H:%M:%S")

@@ -163,33 +163,42 @@ a { text-decoration: none; }
   .login-painel-lateral { display: none; }
 }
 
-/* ---------- Crachá ---------- */
-.cracha-pagina { min-height: 100vh; display: flex; flex-direction: column; align-items: center; gap: 24px; padding: 48px; background: var(--cinza-claro); }
+/* ---------- Crachá (cartão CR80 em pé: 53,98 × 85,6 mm; 15 por folha A4) ---------- */
+.cracha-pagina { min-height: 100vh; display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 24px; background: var(--cinza-claro); }
+.cracha-folha { display: grid; grid-template-columns: repeat(3, 53.98mm); gap: 4mm; justify-content: center; }
 .cracha-cartao {
-  width: 360px; border-radius: var(--bs-border-radius); overflow: hidden; background: #fff;
-  box-shadow: var(--sombra-media); border: 1px solid #e5e9ee;
+  width: 53.98mm; height: 85.6mm; box-sizing: border-box; overflow: hidden; background: #fff;
+  border: 0.2mm dashed #9ca3af; border-radius: 3mm; display: flex; flex-direction: column; align-items: center;
+  break-inside: avoid; page-break-inside: avoid;
+}
+/* Marca do furo para o cordão: recortar ou furar com o furador de crachá. */
+.cracha-furo {
+  width: 14mm; height: 3.2mm; margin: 2.2mm auto 1.6mm; flex: none;
+  border: 0.3mm dashed #6b7280; border-radius: 1.6mm; background: #fff;
 }
 .cracha-topo {
-  background: linear-gradient(135deg, #0f1f4d, #1E40AF);
-  color: #fff; padding: 20px 24px; text-align: center;
+  align-self: stretch; background: linear-gradient(135deg, #0f1f4d, #1E40AF); color: #fff;
+  min-height: 8mm; padding: 1mm 2.5mm; display: flex; align-items: center; justify-content: center; gap: 1.5mm;
+  -webkit-print-color-adjust: exact; print-color-adjust: exact;
 }
-.cracha-topo img.cracha-logo { max-height: 40px; margin-bottom: 8px; }
-.cracha-topo .cracha-instituicao { font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; font-size: 0.9rem; }
-.cracha-corpo { padding: 24px; text-align: center; }
+.cracha-topo img.cracha-logo { max-height: 6mm; }
+.cracha-topo .cracha-instituicao { font-weight: 700; text-transform: uppercase; font-size: 6.5pt; line-height: 1.1; text-align: center; }
+.cracha-corpo { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 2mm 2.5mm 2.5mm; min-height: 0; width: 100%; }
+.cracha-dados { text-align: center; width: 100%; }
 .cracha-foto {
-  width: 110px; height: 110px; border-radius: 50%; object-fit: cover;
-  border: 4px solid var(--azul-claro); margin: -56px auto 14px; display: block; background: #fff;
+  width: 17mm; height: 17mm; border-radius: 50%; object-fit: cover;
+  border: 0.6mm solid var(--azul-claro); margin: 0 auto 1.2mm; display: block; background: #fff;
 }
-.cracha-nome { font-size: 1.2rem; font-weight: 700; }
-.cracha-cargo { color: #6b7280; margin-bottom: 4px; }
-.cracha-matricula { font-size: 0.85rem; color: #6b7280; margin-bottom: 16px; }
-.cracha-qr { width: 150px; height: 150px; margin: 0 auto; }
-.cracha-rodape { border-top: 1px dashed #e5e9ee; padding: 12px 24px; text-align: center; font-size: 0.75rem; color: #9ca3af; }
+.cracha-nome { font-size: 8pt; font-weight: 700; line-height: 1.15; }
+.cracha-cargo { font-size: 6.5pt; color: #6b7280; line-height: 1.15; }
+.cracha-matricula { font-size: 6pt; color: #6b7280; }
+.cracha-qr { width: 30mm; height: 30mm; flex: none; }
+.cracha-rodape { align-self: stretch; border-top: 0.2mm dashed #e5e9ee; padding: 0.8mm 2.5mm; text-align: center; font-size: 5.5pt; color: #9ca3af; }
 
 @media print {
   .sem-impressao { display: none !important; }
-  .cracha-pagina { padding: 0; background: #fff; min-height: 0; }
-  .cracha-cartao { box-shadow: none; border: 1px solid #ddd; }
+  .cracha-pagina { padding: 0; background: #fff; min-height: 0; display: block; }
+  .cracha-folha { gap: 2mm 4mm; }
   .pagina-conteudo { padding: 0 !important; }
   .card { box-shadow: none !important; border: 1px solid #ddd !important; }
 }
