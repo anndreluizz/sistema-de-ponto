@@ -89,3 +89,63 @@ def test_totem_aceita_qualquer_setor_sem_login(conn):
     """Fora de requisição (totem, backup) a conexão não filtra nada."""
     assert conn.execute("SELECT COUNT(*) FROM funcionarios").fetchone()[0] >= 0
     assert db_module._setor_da_sessao() is None
+
+
+# --- Totem sem internet: batida guardada no tablet e enviada depois -----------------
+
+def _totem_autorizado(cliente):
+    from tests.test_app_rotas import _csrf_token
+    _criar_usuario("admin_totem", SENHA, "administrador")
+    _login(cliente, "admin_totem", SENHA)
+    token = _csrf_token(cliente.get("/admin/configuracoes").get_data(as_text=True))
+    cliente.post("/admin/totem/autorizar", data={"csrf_token": token, "nome": "Tablet"})
+    cliente.get("/admin/logout")
+
+
+def test_batida_offline_grava_hora_do_servidor_menos_a_idade(cliente):
+    conn = db_module.get_db()
+    conn.execute("INSERT INTO funcionarios (nome, codigo, situacao) VALUES ('Rita', 'R1', 'ativo')")
+    conn.commit()
+    conn.close()
+    _totem_autorizado(cliente)
+
+    r = cliente.post("/api/bater-ponto", json={"codigo": "R1", "idade_segundos": 3600})
+    assert r.get_json()["ok"] and r.get_json()["tipo"] == "entrada"
+    # reenvio da mesma batida (tablet não soube que entrou) é recusado, não duplica
+    assert cliente.post("/api/bater-ponto", json={"codigo": "R1", "idade_segundos": 3598}).status_code == 429
+    # batida online agora vira saída
+    assert cliente.post("/api/bater-ponto", json={"codigo": "R1"}).get_json()["tipo"] == "saida"
+
+    conn = db_module.get_db()
+    linhas = conn.execute("SELECT tipo, timestamp, motivo FROM registros ORDER BY timestamp").fetchall()
+    conn.close()
+    entrada = datetime.strptime(linhas[0]["timestamp"], "%Y-%m-%d %H:%M:%S")
+    assert abs((datetime.now() - entrada).total_seconds() - 3600) < 60
+    assert "sem internet" in linhas[0]["motivo"] and linhas[1]["motivo"] is None
+
+
+def test_batida_offline_velha_demais_e_recusada(cliente):
+    conn = db_module.get_db()
+    conn.execute("INSERT INTO funcionarios (nome, codigo, situacao) VALUES ('Rita', 'R1', 'ativo')")
+    conn.commit()
+    conn.close()
+    _totem_autorizado(cliente)
+    for idade in (10 * 24 * 3600, -5, "ontem"):
+        assert cliente.post("/api/bater-ponto", json={"codigo": "R1", "idade_segundos": idade}).status_code == 400
+
+
+def test_admin_cria_chefe_de_setor_pela_tela(cliente, dois_setores):
+    from tests.test_app_rotas import _csrf_token
+    _criar_usuario("admin3", SENHA, "administrador")
+    _login(cliente, "admin3", SENHA)
+    html = cliente.get("/admin/usuarios/novo").get_data(as_text=True)
+    assert "Todos os setores" in html and "Obras" in html
+    cliente.post("/admin/usuarios/novo", data={
+        "csrf_token": _csrf_token(html), "nome": "Chefe Obras", "usuario": "chefe_obras",
+        "perfil": "direcao", "senha": SENHA, "setor_id": dois_setores["obras"],
+    })
+    assert "Obras" in cliente.get("/admin/usuarios").get_data(as_text=True)
+    cliente.get("/admin/logout")
+    _login(cliente, "chefe_obras", SENHA)
+    html = cliente.get("/admin/funcionarios").get_data(as_text=True)
+    assert "Paulo Obras" in html and "Ana Escola" not in html
