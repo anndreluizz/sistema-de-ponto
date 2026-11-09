@@ -164,6 +164,11 @@
       .catch(function () { enviandoFila = false; });
   }
 
+  // Só registra em HTTPS/localhost (exigência do navegador); pelo IP da rede da escola fica sem.
+  if ("serviceWorker" in navigator && window.isSecureContext) {
+    navigator.serviceWorker.register("/sw.js").catch(function () {});
+  }
+
   setInterval(enviarFila, 30000);
   window.addEventListener("online", enviarFila);
   atualizarAvisoFila();

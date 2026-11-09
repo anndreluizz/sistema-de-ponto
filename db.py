@@ -276,6 +276,33 @@ def _migrar_totens(conn):
     conn.commit()
 
 
+def _migrar_meu_ponto(conn):
+    """Meu Ponto: o servidor entra com matrícula + PIN (só o hash fica aqui) e pede
+    justificativas, que o chefe do setor ou o RH aprovam — aprovada vira linha em `ausencias`."""
+    if "pin_hash" not in _colunas_existentes(conn, "funcionarios"):
+        conn.execute("ALTER TABLE funcionarios ADD COLUMN pin_hash TEXT")
+    conn.execute(
+        """CREATE TABLE IF NOT EXISTS solicitacoes_justificativa (
+               id INTEGER PRIMARY KEY AUTOINCREMENT,
+               funcionario_id INTEGER NOT NULL REFERENCES funcionarios(id),
+               data TEXT NOT NULL,
+               tipo TEXT NOT NULL,
+               motivo TEXT NOT NULL,
+               anexo_nome TEXT,
+               anexo_caminho TEXT,
+               status TEXT NOT NULL DEFAULT 'pendente' CHECK (status IN ('pendente', 'aprovada', 'recusada')),
+               criado_em TEXT NOT NULL,
+               decidido_por TEXT,
+               decidido_em TEXT,
+               resposta TEXT
+           )"""
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_solicitacoes_status ON solicitacoes_justificativa(status, funcionario_id)"
+    )
+    conn.commit()
+
+
 def _migrar_usuarios_seguranca(conn):
     colunas = _colunas_existentes(conn, "usuarios")
     if "tentativas_falhas" not in colunas:
@@ -538,6 +565,7 @@ def init_db():
         _migrar_usuarios_seguranca(conn)
         _migrar_bloqueios_login(conn)
         _migrar_totens(conn)
+        _migrar_meu_ponto(conn)
         _criar_travas_mes_fechado(conn)  # por último: _migrar_ausencias_tipos recria a tabela
     finally:
         conn.close()

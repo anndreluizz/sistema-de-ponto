@@ -30,6 +30,10 @@
           <li class="nav-item">
             <a class="nav-link {{ 'active' if ep == 'relatorios' }}" href="{{ url_for('relatorios') }}">Relatórios</a>
           </li>
+          <li class="nav-item">
+            <a class="nav-link {{ 'active' if ep == 'solicitacoes' }}" href="{{ url_for('solicitacoes') }}">Pedidos
+              {% if pedidos_pendentes %}<span class="badge rounded-pill bg-danger">{{ pedidos_pendentes }}</span>{% endif %}</a>
+          </li>
         {% endif %}
 
         {% if perfil in ('administrador', 'rh') %}

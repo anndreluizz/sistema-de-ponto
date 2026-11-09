@@ -146,6 +146,21 @@
         </div>
       </div>
 
+      {% if gestao %}
+      <div class="card">
+        <div class="card-body">
+          <h3 class="h6 fw-bold">Meu Ponto (acesso do servidor)</h3>
+          <p class="small text-secondary mb-2">
+            {% if f.pin_hash %}Já tem PIN. Gerar outro invalida o anterior.{% else %}A pessoa ainda não tem PIN para ver o próprio ponto.{% endif %}
+          </p>
+          <form method="post" action="{{ url_for('gerar_pin_meu_ponto', funcionario_id=f.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-sm btn-outline-primary w-100">{{ 'Gerar PIN novo' if f.pin_hash else 'Gerar PIN' }}</button>
+          </form>
+        </div>
+      </div>
+      {% endif %}
+
       <div class="card">
         <div class="card-body small">
           <h3 class="h6 fw-bold">Mais</h3>

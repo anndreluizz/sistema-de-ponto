@@ -1,0 +1,45 @@
+{% from "_macros.html" import csrf_input %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Meu Ponto - Entrar</title>
+  <link rel="icon" href="{{ url_for('static', filename='icone_app.ico') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap/bootstrap.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap-icons/bootstrap-icons.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/inter/fonts.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+</head>
+<body>
+  <div class="login-tela">
+    <div class="login-painel-lateral">
+      <i class="bi bi-person-badge"></i>
+      <h2>Meu Ponto</h2>
+      <p>Veja suas batidas, horas e faltas do mês e peça justificativa sem precisar ir ao RH.</p>
+    </div>
+    <div class="login-painel-formulario">
+      <form class="login-caixa" method="post" novalidate>
+        {{ csrf_input() }}
+        <h1 class="h4 fw-bold mb-1">Área do servidor</h1>
+        <p class="text-secondary mb-4">Entre com sua matrícula e o PIN que o RH te entregou.</p>
+        {% for categoria, mensagem in get_flashed_messages(with_categories=true) %}
+          <div class="alert alert-{{ 'success' if categoria == 'sucesso' else 'danger' }} py-2" role="alert">{{ mensagem }}</div>
+        {% endfor %}
+        <div class="mb-3">
+          <label for="matricula" class="form-label">Matrícula</label>
+          <input type="text" class="form-control" id="matricula" name="matricula" value="{{ matricula or '' }}"
+                 inputmode="numeric" autocomplete="username" required autofocus>
+        </div>
+        <div class="mb-4">
+          <label for="pin" class="form-label">PIN</label>
+          <input type="password" class="form-control" id="pin" name="pin" inputmode="numeric"
+                 autocomplete="current-password" maxlength="6" required>
+        </div>
+        <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold">Entrar</button>
+        <p class="text-secondary small mt-3 mb-0">Esqueceu o PIN? Peça um novo ao RH.</p>
+      </form>
+    </div>
+  </div>
+</body>
+</html>

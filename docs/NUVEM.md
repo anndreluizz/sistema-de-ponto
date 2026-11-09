@@ -74,3 +74,11 @@ amarelo do painel some quando há cópia fora do disco.
 Se a internet do setor cair, o tablet guarda as batidas e envia sozinho quando voltar
 (aviso amarelo no canto da tela mostra quantas estão guardadas). Limite: 4 dias.
 Não recarregue a página do totem enquanto estiver sem internet — ela precisa da rede para abrir.
+
+## Totem abrindo sem internet
+
+Com HTTPS (nuvem), o tablet guarda a tela do totem (`/sw.js`): se reiniciar sem internet, a página abre do mesmo jeito e as batidas vão para a fila. Pelo IP da rede da escola (HTTP) o navegador não permite — lá continua valendo só a fila de batidas.
+
+## Meu Ponto (servidor)
+
+O RH gera o PIN na ficha do funcionário (precisa ter matrícula). O servidor entra em `/meu-ponto/entrar`, vê o mês e pede justificativa com foto do atestado. O chefe do setor (perfil Direção preso ao setor) ou o RH respondem em **Pedidos**; aprovado vira justificativa com o anexo.

@@ -40,6 +40,14 @@ def kiosk():
     return render_template("kiosk.html", config=config, totem_autorizado=totem_autorizado())
 
 
+@app.route("/sw.js")
+def service_worker_totem():
+    # Servido na raiz (não em /static/) para o service worker poder cuidar da página "/".
+    resposta = send_from_directory(nucleo.BASE_DIR / "static" / "js", "sw.js", mimetype="application/javascript")
+    resposta.headers["Cache-Control"] = "no-cache"
+    return resposta
+
+
 def _hash_token(token):
     return hashlib.sha256(token.encode()).hexdigest()
 
