@@ -14,7 +14,7 @@ BASE_DIR = Path(__file__).resolve().parent
 
 def obter_dados_cabecalho(conn):
     config = conn.execute("SELECT * FROM configuracoes WHERE id = 1").fetchone()
-    nome_instituicao = (config["nome_instituicao"] if config else "") or "Ponto Eletrônico"
+    nome_instituicao = (config["nome_instituicao"] if config else "") or "SIGEP"
     logo_abs_path = None
     if config and config["logo_path"]:
         candidato = BASE_DIR / "static" / config["logo_path"]

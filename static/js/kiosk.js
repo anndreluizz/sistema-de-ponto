@@ -96,9 +96,94 @@
     }
   }
 
+  // --- Sem internet: guarda a batida no tablet e envia depois -------------------------
+  // Cada item guarda quando foi lido (Date.now do tablet). No envio vai só a IDADE em segundos;
+  // o servidor grava a hora dele menos a idade, então um relógio errado no tablet não importa.
+  var CHAVE_FILA = "ponto_fila_offline";
+  var MAXIMO_NA_FILA = 500;
+  var enviandoFila = false;
+
+  function lerFila() {
+    try { return JSON.parse(localStorage.getItem(CHAVE_FILA)) || []; } catch (e) { return []; }
+  }
+
+  function gravarFila(fila) {
+    try {
+      localStorage.setItem(CHAVE_FILA, JSON.stringify(fila));
+    } catch (e) {
+      // Memória cheia: as fotos ocupam quase tudo — tira as fotos e tenta de novo.
+      try {
+        localStorage.setItem(CHAVE_FILA, JSON.stringify(fila.map(function (b) {
+          return { codigo: b.codigo, lido_em: b.lido_em };
+        })));
+      } catch (e2) { /* sem como guardar */ }
+    }
+    atualizarAvisoFila();
+  }
+
+  function guardarOffline(codigo, foto) {
+    var fila = lerFila();
+    if (fila.length >= MAXIMO_NA_FILA) return false;
+    fila.push({ codigo: codigo, foto: foto, lido_em: Date.now() });
+    gravarFila(fila);
+    return lerFila().length === fila.length;
+  }
+
+  function atualizarAvisoFila() {
+    var aviso = document.getElementById("aviso-fila");
+    if (!aviso) return;
+    var n = lerFila().length;
+    aviso.textContent = n ? n + (n === 1 ? " batida guardada" : " batidas guardadas") + ", enviando quando a internet voltar" : "";
+    aviso.classList.toggle("oculto", !n);
+  }
+
+  function enviarFila() {
+    if (enviandoFila) return;
+    var fila = lerFila();
+    if (!fila.length) return;
+    enviandoFila = true;
+    var item = fila[0];
+    fetch("/api/bater-ponto", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        codigo: item.codigo, foto: item.foto,
+        idade_segundos: Math.max(0, Math.round((Date.now() - item.lido_em) / 1000)),
+      }),
+    })
+      .then(function (resposta) {
+        // 2xx entrou; 4xx o servidor recusou de vez (crachá desligado, repetida, mês fechado):
+        // tira da fila nos dois casos. 5xx = servidor com problema, tenta de novo depois.
+        if (resposta.status >= 500) throw new Error("servidor");
+        var resto = lerFila();
+        if (resto.length && resto[0].lido_em === item.lido_em) resto.shift();
+        gravarFila(resto);
+        enviandoFila = false;
+        enviarFila();
+      })
+      .catch(function () { enviandoFila = false; });
+  }
+
+  // Só registra em HTTPS/localhost (exigência do navegador); pelo IP da rede da escola fica sem.
+  if ("serviceWorker" in navigator && window.isSecureContext) {
+    navigator.serviceWorker.register("/sw.js").catch(function () {});
+  }
+
+  setInterval(enviarFila, 30000);
+  window.addEventListener("online", enviarFila);
+  atualizarAvisoFila();
+  enviarFila();
+
   function processarCodigo(codigo) {
     ocupado = true;
     var foto = capturarFoto();
+    if (lerFila().length && guardarOffline(codigo, foto)) {
+      // Ainda há batidas antigas para enviar: esta vai para o fim da fila, senão chegaria ao
+      // servidor antes delas e a entrada/saída sairia trocada.
+      mostrarFeedback(true, "Batida guardada", "O totem está enviando as batidas guardadas.");
+      enviarFila();
+      return;
+    }
     // Sem tempo limite, um Wi-Fi que cai no meio da requisição deixava o totem travado
     // (ocupado = true) sem ler mais nenhum crachá e sem avisar ninguém.
     var controle = new AbortController();
@@ -128,7 +213,12 @@
         }
       })
       .catch(function () {
-        mostrarFeedback(false, "Sem conexão com o servidor", "Chame a coordenação.");
+        if (guardarOffline(codigo, foto)) {
+          var hora = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+          mostrarFeedback(true, "Batida guardada às " + hora, "Sem internet agora — o totem envia sozinho quando voltar.");
+        } else {
+          mostrarFeedback(false, "Sem conexão com o servidor", "Chame a coordenação.");
+        }
       })
       .then(function () {
         clearTimeout(temporizador);

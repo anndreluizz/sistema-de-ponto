@@ -17,7 +17,7 @@ COMO USAR PELA PRIMEIRA VEZ
 1. De dois cliques no arquivo "iniciar.bat".
    - Na primeira vez, ele vai demorar um pouco mais (instalando os programas
      necessarios). Nas proximas vezes é rapido.
-   - Vai abrir uma janela preta chamada "Servidor - Sistema de Ponto" — essa
+   - Vai abrir uma janela preta chamada "Servidor - SIGEP" — essa
      janela PRECISA continuar aberta o dia todo (pode minimizar, so nao feche).
    - O navegador vai abrir sozinho na tela do totem.
 
@@ -301,7 +301,7 @@ Esse script funciona com o servidor ligado ou desligado.
 
 COMO PARAR O SISTEMA
 ----------------------
-Feche a janela preta "Servidor - Sistema de Ponto". Para usar de novo, so
+Feche a janela preta "Servidor - SIGEP". Para usar de novo, so
 rodar o "iniciar.bat" outra vez.
 
 

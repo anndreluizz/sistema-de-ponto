@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block titulo %}PIN do Meu Ponto{% endblock %}
+{% block conteudo %}
+  <div class="card mx-auto" style="max-width: 420px;">
+    <div class="card-body text-center p-4">
+      <div class="small text-secondary">{{ config.nome_instituicao or "" }}</div>
+      <h1 class="h5 fw-bold mt-2">Meu Ponto — acesso do servidor</h1>
+      <p class="mb-1">{{ f.nome }}</p>
+      <p class="mb-3">Matrícula <b>{{ f.matricula }}</b></p>
+      <div class="display-5 fw-bold num border rounded py-2 mb-3" style="letter-spacing: .3em;">{{ pin }}</div>
+      <p class="small text-secondary">Entre em <b>{{ url_for('meu_ponto_entrar', _external=True) }}</b> com a matrícula e este PIN.
+        Não mostre o PIN a ninguém. Se esquecer, peça um novo ao RH (o antigo para de valer).</p>
+      <p class="small text-danger sem-impressao">Este PIN aparece só agora. Imprima ou anote antes de sair desta tela.</p>
+      <div class="d-flex gap-2 justify-content-center sem-impressao">
+        <button type="button" class="btn btn-primary" onclick="window.print()">Imprimir</button>
+        <a class="btn btn-light border" href="{{ url_for('ficha_funcionario', funcionario_id=f.id) }}">Voltar à ficha</a>
+      </div>
+    </div>
+  </div>
+{% endblock %}

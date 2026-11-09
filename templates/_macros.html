@@ -43,7 +43,7 @@
       <img src="{{ url_for('static', filename=config.logo_path) }}" style="max-height:48px;" alt="Logo">
     {% endif %}
     <div>
-      <div class="fw-bold">{{ (config.nome_instituicao if config and config.nome_instituicao else "Ponto Eletrônico") }}</div>
+      <div class="fw-bold">{{ (config.nome_instituicao if config and config.nome_instituicao else "SIGEP") }}</div>
       <div class="h5 fw-bold mb-0">{{ titulo }}</div>
       <div class="text-secondary small">{{ subtitulo }}</div>
     </div>

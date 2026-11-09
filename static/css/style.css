@@ -99,6 +99,16 @@ body {
   font-weight: 600;
   opacity: 0.9;
 }
+.kiosk-aviso-fila {
+  position: absolute;
+  top: 28px;
+  right: 32px;
+  background: #fbbf24;
+  color: #1f2937;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 999px;
+}
 .kiosk-instrucao {
   position: absolute;
   bottom: 40px;

@@ -4,7 +4,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Login - Ponto Eletrônico</title>
+  <title>Login - SIGEP</title>
   <link rel="icon" href="{{ url_for('static', filename='icone_app.ico') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap/bootstrap.min.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap-icons/bootstrap-icons.min.css') }}">
@@ -15,7 +15,8 @@
   <div class="login-tela">
     <div class="login-painel-lateral">
       <i class="bi bi-fingerprint"></i>
-      <h2>Ponto Eletrônico</h2>
+      <h2>SIGEP</h2>
+      <p class="fw-semibold mb-1">Sistema de Gestão de Ponto</p>
       <p>Controle de frequência simples, seguro e feito sob medida para a sua instituição.</p>
     </div>
 
@@ -68,6 +69,9 @@
         </button>
         <a class="d-block text-center text-secondary small mt-2" href="{{ url_for('kiosk') }}">
           <i class="bi bi-arrow-left"></i> Voltar para o totem
+        </a>
+        <a class="d-block text-center small mt-2 fw-semibold" href="{{ url_for('meu_ponto_entrar') }}">
+          <i class="bi bi-person-badge"></i> Sou servidor: ver meu ponto
         </a>
       </form>
     </div>

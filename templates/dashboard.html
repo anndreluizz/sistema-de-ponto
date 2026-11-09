@@ -8,7 +8,7 @@
   {% set pode_ajustar = session.usuario_perfil in ('administrador', 'rh') %}
 
   <h1 class="h3 fw-bold mb-1">Hoje</h1>
-  <p class="text-secondary mb-4">{{ i.total_ativos }} funcionários ativos</p>
+  <p class="text-secondary mb-4">{% if setor_nome %}{{ setor_nome }} · {% endif %}{{ i.total_ativos }} funcionários ativos</p>
 
   {% if aviso_backup %}
     <div class="alert alert-warning d-flex flex-wrap align-items-center gap-2 mb-4" role="alert">
@@ -56,6 +56,26 @@
     </p>
   {% else %}
     <div class="mb-4"></div>
+  {% endif %}
+
+  {% if i.por_setor %}
+    <h2 class="h6 fw-bold mb-2">Presença por setor agora</h2>
+    <div class="card mb-4">
+      {% for s in i.por_setor %}
+        <div class="painel-linha">
+          <div class="flex-grow-1">
+            <div class="fw-semibold">{{ s.nome }}</div>
+            <div class="small text-secondary">{{ s.presentes }} de {{ s.total }} presentes{% if s.ausentes %} · {{ s.ausentes }} ainda não chegaram{% endif %}</div>
+          </div>
+          <div style="width: 40%; min-width: 120px;">
+            <div class="progress" role="progressbar" aria-label="Presença em {{ s.nome }}" aria-valuenow="{{ s.pct }}" aria-valuemin="0" aria-valuemax="100" style="height: 8px;">
+              <div class="progress-bar {{ 'bg-success' if s.pct >= 85 else ('bg-warning' if s.pct >= 60 else 'bg-danger') }}" style="width: {{ s.pct }}%"></div>
+            </div>
+            <div class="small text-secondary text-end">{{ s.pct }}%</div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
   {% endif %}
 
   {% if ve_nomes %}

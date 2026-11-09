@@ -3,6 +3,7 @@
 import base64
 import hashlib
 import secrets
+import sqlite3
 from datetime import datetime, timedelta
 from pathlib import Path
 from flask import (
@@ -37,6 +38,14 @@ def kiosk():
     finally:
         conn.close()
     return render_template("kiosk.html", config=config, totem_autorizado=totem_autorizado())
+
+
+@app.route("/sw.js")
+def service_worker_totem():
+    # Servido na raiz (não em /static/) para o service worker poder cuidar da página "/".
+    resposta = send_from_directory(nucleo.BASE_DIR / "static" / "js", "sw.js", mimetype="application/javascript")
+    resposta.headers["Cache-Control"] = "no-cache"
+    return resposta
 
 
 def _hash_token(token):
@@ -79,7 +88,9 @@ def autorizar_totem():
         conn.close()
     resposta = redirect(url_for("kiosk"))
     # Longo de propósito: o tablet não pode "deslogar" sozinho. Revogação é pela tabela.
-    resposta.set_cookie(COOKIE_TOTEM, token, max_age=10 * 365 * 24 * 3600, httponly=True, samesite="Lax")
+    resposta.set_cookie(
+        COOKIE_TOTEM, token, max_age=10 * 365 * 24 * 3600, httponly=True, samesite="Lax", secure=nucleo.NA_NUVEM
+    )
     return resposta
 
 
@@ -109,6 +120,16 @@ def arquivo_privado(pasta, nome):
     pastas = {"fotos": nucleo.FOTOS_DIR, "qrcodes": nucleo.QRCODES_DIR}
     if pasta not in pastas:
         abort(404)
+    if session.get("usuario_setor_id"):
+        # Chefe de setor: os arquivos se chamam <id>.png/.jpg — sem isso dava pra baixar o
+        # QR Code (que bate ponto) de quem é de outro setor só trocando o número na URL.
+        conn = db.get_db()  # já vem filtrada pelo setor
+        try:
+            visivel = conn.execute("SELECT 1 FROM funcionarios WHERE id = ?", (Path(nome).stem,)).fetchone()
+        finally:
+            conn.close()
+        if not visivel:
+            abort(404)
     return send_from_directory(pastas[pasta], nome)
 
 
@@ -161,6 +182,10 @@ def _turno_passa_da_meia_noite(conn, funcionario):
     return turno is not None and turno["horario_saida"] <= turno["horario_entrada"]
 
 
+# Quanto tempo o totem pode ficar sem internet guardando batidas (fim de semana prolongado).
+LIMITE_OFFLINE_SEGUNDOS = 4 * 24 * 3600
+
+
 @app.route("/api/bater-ponto", methods=["POST"])
 @csrf.exempt
 def api_bater_ponto():
@@ -171,6 +196,13 @@ def api_bater_ponto():
     codigo = (dados.get("codigo") or "").strip()
     if not codigo:
         return jsonify({"ok": False, "erro": "Código vazio."}), 400
+    # Batida guardada no tablet enquanto a internet estava fora: ele manda há quantos segundos
+    # leu o crachá (diferença medida no próprio tablet), não a hora do relógio dele — atrasar o
+    # relógio do tablet não muda nada. A hora gravada é a do servidor menos essa idade.
+    idade = dados.get("idade_segundos")
+    if idade is not None:
+        if not isinstance(idade, (int, float)) or not 0 <= idade <= LIMITE_OFFLINE_SEGUNDOS:
+            return jsonify({"ok": False, "erro": "Batida guardada há tempo demais."}), 400
 
     conn = db.get_db()
     try:
@@ -203,13 +235,14 @@ def api_bater_ponto():
         # Trava de escrita antes de ler a última batida: duas leituras simultâneas do mesmo
         # crachá (ex.: dois aparelhos) não conseguem passar as duas pelo cooldown.
         conn.execute("BEGIN IMMEDIATE")
-        agora = datetime.now()
+        agora = datetime.now().replace(microsecond=0) - timedelta(seconds=int(idade or 0))
         inicio_do_dia = agora.strftime("%Y-%m-%d") + " 00:00:00"
+        agora_str = agora.strftime("%Y-%m-%d %H:%M:%S")
         ultimo = conn.execute(
             """SELECT * FROM registros
-               WHERE funcionario_id = ? AND timestamp >= ?
+               WHERE funcionario_id = ? AND timestamp >= ? AND timestamp <= ?
                ORDER BY timestamp DESC LIMIT 1""",
-            (funcionario["id"], inicio_do_dia),
+            (funcionario["id"], inicio_do_dia, agora_str),
         ).fetchone()
 
         if ultimo is None and _turno_passa_da_meia_noite(conn, funcionario):
@@ -233,13 +266,20 @@ def api_bater_ponto():
                 return jsonify({"ok": False, "erro": "Ponto já registrado agora há pouco."}), 429
 
         tipo = "entrada" if (ultimo is None or ultimo["tipo"] == "saida") else "saida"
-        timestamp_str = agora.strftime("%Y-%m-%d %H:%M:%S")
+        timestamp_str = agora_str
+        motivo = None
+        if idade:
+            motivo = f"Batida feita sem internet no totem; chegou ao servidor {int(idade) // 60} min depois"
 
-        cursor = conn.execute(
-            "INSERT INTO registros (funcionario_id, tipo, timestamp, manual) VALUES (?, ?, ?, 0)",
-            (funcionario["id"], tipo, timestamp_str),
-        )
-        conn.commit()
+        try:
+            cursor = conn.execute(
+                "INSERT INTO registros (funcionario_id, tipo, timestamp, manual, motivo) VALUES (?, ?, ?, 0, ?)",
+                (funcionario["id"], tipo, timestamp_str, motivo),
+            )
+            conn.commit()
+        except sqlite3.IntegrityError:  # mês já fechado pelo RH
+            conn.rollback()
+            return jsonify({"ok": False, "erro": "O mês dessa batida já foi fechado."}), 409
         salvar_foto_batida(cursor.lastrowid, timestamp_str, dados.get("foto"))
 
         return jsonify(
@@ -250,6 +290,7 @@ def api_bater_ponto():
                 "foto": _foto_como_data_uri(funcionario["foto"]) if funcionario["foto"] else None,
                 "tipo": tipo,
                 "horario": agora.strftime("%H:%M:%S"),
+                "offline": bool(idade),
             }
         )
     finally:

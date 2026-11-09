@@ -18,7 +18,7 @@
             <tr class="{{ 'opacity-50' if not u.ativo else '' }}">
               <td>{{ u.nome }}</td>
               <td>{{ u.usuario }}</td>
-              <td>{{ badge_perfil(u.perfil, nomes_perfil) }}</td>
+              <td>{{ badge_perfil(u.perfil, nomes_perfil) }}{% if u.setor_nome %} <span class="text-muted small">· {{ u.setor_nome }}</span>{% endif %}</td>
               <td>
                 <span class="badge rounded-pill {{ 'text-bg-success' if u.ativo else 'text-bg-secondary' }}">
                   {{ "Ativo" if u.ativo else "Inativo" }}

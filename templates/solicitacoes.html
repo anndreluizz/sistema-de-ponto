@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf_input %}
+{% block titulo %}Pedidos de justificativa{% endblock %}
+{% block conteudo %}
+  <h1 class="h4 fw-bold mb-1">Pedidos de justificativa</h1>
+  <p class="text-secondary">Enviados pelos servidores no Meu Ponto. Aprovado vira justificativa na hora (com o atestado anexado).</p>
+
+  <div class="card mb-3">
+    <div class="card-header bg-white fw-bold">Esperando resposta ({{ pendentes|length }})</div>
+    <div class="list-group list-group-flush">
+      {% for s in pendentes %}
+        <div class="list-group-item py-3">
+          <div class="d-flex flex-wrap justify-content-between gap-2">
+            <div>
+              <div class="fw-semibold">{{ s.funcionario_nome }} <span class="text-secondary small">{% if s.matricula %}Mat. {{ s.matricula }}{% endif %}{% if s.setor_nome %} · {{ s.setor_nome }}{% endif %}</span></div>
+              <div><b>{{ s.data[8:10] }}/{{ s.data[5:7] }}/{{ s.data[:4] }}</b> · {{ nomes_tipo_ausencia.get(s.tipo, s.tipo) }}</div>
+              <div class="text-secondary small">{{ s.motivo }}</div>
+              {% if s.anexo_caminho %}
+                <a class="small" href="{{ url_for('anexo_solicitacao', solicitacao_id=s.id) }}" target="_blank"><i class="bi bi-paperclip"></i> {{ s.anexo_nome }}</a>
+              {% endif %}
+            </div>
+            <form method="post" action="{{ url_for('decidir_solicitacao', solicitacao_id=s.id) }}" class="d-flex flex-column gap-2" style="min-width: 260px;">
+              {{ csrf_input() }}
+              <input type="text" class="form-control form-control-sm" name="resposta" maxlength="500" placeholder="Resposta (obrigatória para recusar)">
+              <div class="d-flex gap-2">
+                <button class="btn btn-sm btn-success flex-fill" name="acao" value="aprovar">Aprovar</button>
+                <button class="btn btn-sm btn-outline-danger flex-fill" name="acao" value="recusar">Recusar</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      {% else %}
+        <div class="list-group-item text-secondary text-center py-4">Nenhum pedido esperando.</div>
+      {% endfor %}
+    </div>
+  </div>
+
+  {% if decididas %}
+    <div class="card">
+      <div class="card-header bg-white fw-bold">Respondidos recentemente</div>
+      <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+          <thead><tr><th>Servidor</th><th>Dia</th><th>Tipo</th><th>Situação</th><th>Por</th></tr></thead>
+          <tbody>
+            {% for s in decididas %}
+              <tr>
+                <td>{{ s.funcionario_nome }}</td>
+                <td class="text-nowrap">{{ s.data[8:10] }}/{{ s.data[5:7] }}</td>
+                <td>{{ nomes_tipo_ausencia.get(s.tipo, s.tipo) }}</td>
+                <td><span class="badge {{ 'text-bg-success' if s.status == 'aprovada' else 'text-bg-danger' }}">{{ s.status|capitalize }}</span>{% if s.resposta %} <span class="small text-secondary">{{ s.resposta }}</span>{% endif %}</td>
+                <td class="small text-secondary">{{ s.decidido_por }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  {% endif %}
+{% endblock %}

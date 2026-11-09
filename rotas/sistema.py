@@ -36,6 +36,22 @@ from nucleo import (
 )
 
 
+def _setor_do_form(conn, perfil):
+    """Setor escolhido no formulário de usuário: só vale para perfis de leitura (chefe de setor)."""
+    setor_id = request.form.get("setor_id", type=int)
+    if perfil not in db.PERFIS_COM_SETOR or not setor_id:
+        return None
+    return setor_id if conn.execute("SELECT 1 FROM setores WHERE id = ?", (setor_id,)).fetchone() else None
+
+
+def _contexto_form_usuario(conn, usuario):
+    return dict(
+        usuario=usuario, perfis_validos=db.PERFIS_VALIDOS, nomes_perfil=NOMES_PERFIL,
+        perfis_com_setor=db.PERFIS_COM_SETOR,
+        setores=conn.execute("SELECT id, nome FROM setores ORDER BY nome").fetchall(),
+    )
+
+
 def contar_administradores_ativos(conn, excluir_id=None):
     query = "SELECT COUNT(*) AS n FROM usuarios WHERE perfil = 'administrador' AND ativo = 1"
     params = []
@@ -276,7 +292,10 @@ def auditoria():
 def usuarios():
     conn = db.get_db()
     try:
-        lista = conn.execute("SELECT * FROM usuarios ORDER BY ativo DESC, nome").fetchall()
+        lista = conn.execute(
+            """SELECT usuarios.*, setores.nome AS setor_nome FROM usuarios
+               LEFT JOIN setores ON setores.id = usuarios.setor_id ORDER BY usuarios.ativo DESC, usuarios.nome"""
+        ).fetchall()
         return render_template("usuarios.html", usuarios=lista, nomes_perfil=NOMES_PERFIL)
     finally:
         conn.close()
@@ -306,12 +325,15 @@ def novo_usuario():
 
         conn = db.get_db()
         try:
+            setor_id = _setor_do_form(conn, perfil)
             cursor = conn.execute(
-                "INSERT INTO usuarios (nome, usuario, senha_hash, perfil, ativo) VALUES (?, ?, ?, ?, 1)",
-                (nome, usuario, generate_password_hash(senha), perfil),
+                "INSERT INTO usuarios (nome, usuario, senha_hash, perfil, ativo, setor_id) VALUES (?, ?, ?, ?, 1, ?)",
+                (nome, usuario, generate_password_hash(senha), perfil, setor_id),
             )
             conn.commit()
-            registrar_auditoria(conn, "criar", "usuario", cursor.lastrowid, f"usuario={usuario}; perfil={perfil}")
+            registrar_auditoria(
+                conn, "criar", "usuario", cursor.lastrowid, f"usuario={usuario}; perfil={perfil}; setor_id={setor_id}"
+            )
             flash("Usuário criado.", "sucesso")
             return redirect(url_for("usuarios"))
         except sqlite3.IntegrityError:
@@ -320,7 +342,11 @@ def novo_usuario():
         finally:
             conn.close()
 
-    return render_template("usuario_form.html", usuario=None, perfis_validos=db.PERFIS_VALIDOS, nomes_perfil=NOMES_PERFIL)
+    conn = db.get_db()
+    try:
+        return render_template("usuario_form.html", **_contexto_form_usuario(conn, None))
+    finally:
+        conn.close()
 
 
 @app.route("/admin/usuarios/<int:usuario_id>/editar", methods=["GET", "POST"])
@@ -349,15 +375,18 @@ def editar_usuario(usuario_id):
                     flash("Não é possível rebaixar: esse é o último administrador ativo.", "erro")
                     return redirect(url_for("editar_usuario", usuario_id=usuario_id))
 
-            conn.execute("UPDATE usuarios SET nome = ?, perfil = ? WHERE id = ?", (nome, perfil, usuario_id))
+            setor_id = _setor_do_form(conn, perfil)
+            conn.execute(
+                "UPDATE usuarios SET nome = ?, perfil = ?, setor_id = ? WHERE id = ?", (nome, perfil, setor_id, usuario_id)
+            )
             conn.commit()
-            registrar_auditoria(conn, "editar", "usuario", usuario_id, f"nome={nome}; perfil={perfil}")
+            registrar_auditoria(
+                conn, "editar", "usuario", usuario_id, f"nome={nome}; perfil={perfil}; setor_id={setor_id}"
+            )
             flash("Usuário atualizado.", "sucesso")
             return redirect(url_for("usuarios"))
 
-        return render_template(
-            "usuario_form.html", usuario=alvo, perfis_validos=db.PERFIS_VALIDOS, nomes_perfil=NOMES_PERFIL
-        )
+        return render_template("usuario_form.html", **_contexto_form_usuario(conn, alvo))
     finally:
         conn.close()
 

@@ -155,7 +155,25 @@ def calcular_dashboard(conn):
         "registros_hoje": len(registros_hoje),
         "ultimas_batidas": ultimas_batidas,
         "pendencias": relatorios_service.listar_sem_saida(conn),
+        "por_setor": _presenca_por_setor(conn, ativos, presentes, ausentes),
     }
+
+
+def _presenca_por_setor(conn, ativos, presentes, ausentes):
+    """Painel geral (prefeito/RH): presença de cada setor agora. Vazio com um setor só."""
+    nomes = {s["id"]: s["nome"] for s in conn.execute("SELECT id, nome FROM setores")}
+    linhas = {}
+    for grupo, chave in ((ativos, "total"), (presentes, "presentes"), (ausentes, "ausentes")):
+        for f in grupo:
+            linha = linhas.setdefault(
+                f["setor_id"], {"nome": nomes.get(f["setor_id"], "Sem setor"), "total": 0, "presentes": 0, "ausentes": 0}
+            )
+            linha[chave] += 1
+    if len(linhas) < 2:
+        return []
+    for linha in linhas.values():
+        linha["pct"] = round(100 * linha["presentes"] / linha["total"]) if linha["total"] else 0
+    return sorted(linhas.values(), key=lambda l: (l["pct"], l["nome"]))
 
 
 @app.route("/admin")
@@ -170,7 +188,12 @@ def dashboard():
     conn = db.get_db()
     try:
         aviso_backup = aviso_backup_fora(conn) if session.get("usuario_perfil") == "administrador" else None
-        return render_template("dashboard.html", indicadores=calcular_dashboard(conn), aviso_backup=aviso_backup)
+        setor_id = session.get("usuario_setor_id")
+        setor = conn.execute("SELECT nome FROM setores WHERE id = ?", (setor_id,)).fetchone() if setor_id else None
+        return render_template(
+            "dashboard.html", indicadores=calcular_dashboard(conn), aviso_backup=aviso_backup,
+            setor_nome=setor["nome"] if setor else None,
+        )
     finally:
         conn.close()
 

@@ -16,13 +16,36 @@ TIPOS_AUSENCIA_VALIDOS = (
     "licenca_maternidade_paternidade", "falecimento", "abono_legal", "outro",
 )
 PERFIS_VALIDOS = ("administrador", "rh", "direcao", "consulta")
+# Só perfis de leitura podem ficar presos a um setor (chefe de setor). Admin/RH veem tudo.
+PERFIS_COM_SETOR = ("direcao", "consulta")
 
 
 def get_db():
     conn = sqlite3.connect(DB_PATH, timeout=15)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
+    setor_id = _setor_da_sessao()
+    if setor_id is not None:
+        # Usuário preso a um setor: uma view temporária com o mesmo nome esconde a tabela
+        # `funcionarios` nesta conexão. Toda consulta (lista, relatórios, ficha, exportações,
+        # JOINs com registros/ausências) passa a ver só o setor dele, sem mexer em cada tela.
+        # Escrever na view dá erro — de propósito: esses perfis são só leitura.
+        conn.execute(
+            f"CREATE TEMP VIEW funcionarios AS SELECT * FROM main.funcionarios WHERE setor_id = {int(setor_id)}"
+        )
     return conn
+
+
+def _setor_da_sessao():
+    """Setor do usuário logado (preenchido por nucleo.login_obrigatorio), ou None fora de
+    requisição (totem, backup automático, scripts) e para quem vê todos os setores."""
+    try:
+        from flask import has_request_context, session
+    except ImportError:
+        return None
+    if not has_request_context():
+        return None
+    return session.get("usuario_setor_id")
 
 
 def _colunas_existentes(conn, tabela):
@@ -253,6 +276,33 @@ def _migrar_totens(conn):
     conn.commit()
 
 
+def _migrar_meu_ponto(conn):
+    """Meu Ponto: o servidor entra com matrícula + PIN (só o hash fica aqui) e pede
+    justificativas, que o chefe do setor ou o RH aprovam — aprovada vira linha em `ausencias`."""
+    if "pin_hash" not in _colunas_existentes(conn, "funcionarios"):
+        conn.execute("ALTER TABLE funcionarios ADD COLUMN pin_hash TEXT")
+    conn.execute(
+        """CREATE TABLE IF NOT EXISTS solicitacoes_justificativa (
+               id INTEGER PRIMARY KEY AUTOINCREMENT,
+               funcionario_id INTEGER NOT NULL REFERENCES funcionarios(id),
+               data TEXT NOT NULL,
+               tipo TEXT NOT NULL,
+               motivo TEXT NOT NULL,
+               anexo_nome TEXT,
+               anexo_caminho TEXT,
+               status TEXT NOT NULL DEFAULT 'pendente' CHECK (status IN ('pendente', 'aprovada', 'recusada')),
+               criado_em TEXT NOT NULL,
+               decidido_por TEXT,
+               decidido_em TEXT,
+               resposta TEXT
+           )"""
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_solicitacoes_status ON solicitacoes_justificativa(status, funcionario_id)"
+    )
+    conn.commit()
+
+
 def _migrar_usuarios_seguranca(conn):
     colunas = _colunas_existentes(conn, "usuarios")
     if "tentativas_falhas" not in colunas:
@@ -262,6 +312,8 @@ def _migrar_usuarios_seguranca(conn):
     # Muda a cada troca de senha: sessões abertas antes (outro PC, cookie roubado) caem.
     if "versao_sessao" not in colunas:
         conn.execute("ALTER TABLE usuarios ADD COLUMN versao_sessao INTEGER NOT NULL DEFAULT 0")
+    if "setor_id" not in colunas:
+        conn.execute("ALTER TABLE usuarios ADD COLUMN setor_id INTEGER REFERENCES setores(id)")
     # Senha definida pelo admin (reset): a pessoa precisa trocar no próximo login.
     if "senha_provisoria" not in colunas:
         conn.execute("ALTER TABLE usuarios ADD COLUMN senha_provisoria INTEGER NOT NULL DEFAULT 0")
@@ -513,6 +565,7 @@ def init_db():
         _migrar_usuarios_seguranca(conn)
         _migrar_bloqueios_login(conn)
         _migrar_totens(conn)
+        _migrar_meu_ponto(conn)
         _criar_travas_mes_fechado(conn)  # por último: _migrar_ausencias_tipos recria a tabela
     finally:
         conn.close()

@@ -1,5 +1,6 @@
 import io
 import logging
+import os
 import re
 import secrets
 import shutil
@@ -133,6 +134,16 @@ app.config["SECRET_KEY"] = carregar_ou_criar_secret_key()
 app.config["MAX_CONTENT_LENGTH"] = 100 * 1024 * 1024
 app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(minutes=60)
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+
+# Na nuvem (atrás do Caddy/HTTPS) defina PONTO_NUVEM=1: sem isso todo acesso parece vir de
+# 127.0.0.1 — o bloqueio de senha por aparelho travaria todo mundo junto e a auditoria
+# gravaria o IP errado — e os cookies poderiam trafegar sem HTTPS. Na escola fica desligado.
+NA_NUVEM = os.environ.get("PONTO_NUVEM") == "1"
+if NA_NUVEM:
+    from werkzeug.middleware.proxy_fix import ProxyFix
+
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+    app.config["SESSION_COOKIE_SECURE"] = True
 
 csrf = CSRFProtect(app)
 
@@ -331,7 +342,7 @@ def login_obrigatorio(f):
         conn = db.get_db()
         try:
             usuario = conn.execute(
-                "SELECT perfil, versao_sessao FROM usuarios WHERE id = ? AND ativo = 1", (session["usuario_id"],)
+                "SELECT perfil, versao_sessao, setor_id FROM usuarios WHERE id = ? AND ativo = 1", (session["usuario_id"],)
             ).fetchone()
         finally:
             conn.close()
@@ -343,6 +354,7 @@ def login_obrigatorio(f):
             flash("Sua senha foi alterada. Entre de novo.", "erro")
             return redirect(url_for("login"))
         session["usuario_perfil"] = usuario["perfil"]
+        session["usuario_setor_id"] = usuario["setor_id"] if usuario["perfil"] in db.PERFIS_COM_SETOR else None
         if session.get("senha_padrao") and request.endpoint not in ("trocar_senha", "logout"):
             flash("Por segurança, troque a senha padrão antes de continuar.", "erro")
             return redirect(url_for("trocar_senha"))
