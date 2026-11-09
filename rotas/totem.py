@@ -80,7 +80,9 @@ def autorizar_totem():
         conn.close()
     resposta = redirect(url_for("kiosk"))
     # Longo de propósito: o tablet não pode "deslogar" sozinho. Revogação é pela tabela.
-    resposta.set_cookie(COOKIE_TOTEM, token, max_age=10 * 365 * 24 * 3600, httponly=True, samesite="Lax")
+    resposta.set_cookie(
+        COOKIE_TOTEM, token, max_age=10 * 365 * 24 * 3600, httponly=True, samesite="Lax", secure=nucleo.NA_NUVEM
+    )
     return resposta
 
 
