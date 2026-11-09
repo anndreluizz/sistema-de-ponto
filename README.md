@@ -1,4 +1,4 @@
-# Ponto Eletrônico Escolar
+# SIGEP — Sistema de Gestão de Ponto
 
 Sistema de ponto eletrônico feito para uma **escola municipal de Tonantins (AM)**, onde os funcionários ainda assinavam o ponto num **caderno**. Agora cada um aproxima o crachá com QR Code da câmera do totem, e o sistema grava a data e a hora reais e calcula atrasos, faltas e horas trabalhadas. A folha de ponto do mês sai pronta em PDF ou Excel.
 

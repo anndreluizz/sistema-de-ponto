@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-  <title>Ponto Eletrônico</title>
+  <title>SIGEP</title>
   <link rel="icon" href="{{ url_for('static', filename='icone_app.ico') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap-icons/bootstrap-icons.min.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='vendor/inter/fonts.css') }}">
@@ -15,7 +15,7 @@
     {% if config and config.logo_path %}
       <img src="{{ url_for('static', filename=config.logo_path) }}" class="kiosk-logo" alt="Logo da instituição">
     {% endif %}
-    <h1>{{ config.nome_instituicao if config and config.nome_instituicao else "Ponto Eletrônico" }}</h1>
+    <h1>{{ config.nome_instituicao if config and config.nome_instituicao else "SIGEP" }}</h1>
     {% if not totem_autorizado %}
       <p class="kiosk-aviso"><strong>Este aparelho ainda não está autorizado como totem.</strong><br>
         Um administrador precisa entrar pela engrenagem, ir em Configurações e clicar em

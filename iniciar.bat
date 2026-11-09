@@ -70,7 +70,7 @@ if exist .secret_key icacls .secret_key /inheritance:r /grant:r "%USERNAME%:F" "
 echo.
 echo Iniciando o servidor do sistema de ponto...
 REM "cmd /k" mantem a janela aberta se o servidor parar com erro, pra dar pra ler o motivo.
-start "Servidor - Sistema de Ponto (nao feche esta janela)" cmd /k venv\Scripts\python.exe -m waitress --listen=0.0.0.0:5000 app:app
+start "Servidor - SIGEP (nao feche esta janela)" cmd /k venv\Scripts\python.exe -m waitress --listen=0.0.0.0:5000 app:app
 
 ping -n 3 127.0.0.1 >nul
 
@@ -78,7 +78,7 @@ start "" http://127.0.0.1:5000/
 
 echo.
 echo Tudo pronto. O totem foi aberto no navegador.
-echo Para PARAR o sistema, feche a janela "Servidor - Sistema de Ponto".
+echo Para PARAR o sistema, feche a janela "Servidor - SIGEP".
 echo Esta janela aqui ja pode ser fechada.
 echo.
 pause
