@@ -109,6 +109,16 @@ def arquivo_privado(pasta, nome):
     pastas = {"fotos": nucleo.FOTOS_DIR, "qrcodes": nucleo.QRCODES_DIR}
     if pasta not in pastas:
         abort(404)
+    if session.get("usuario_setor_id"):
+        # Chefe de setor: os arquivos se chamam <id>.png/.jpg — sem isso dava pra baixar o
+        # QR Code (que bate ponto) de quem é de outro setor só trocando o número na URL.
+        conn = db.get_db()  # já vem filtrada pelo setor
+        try:
+            visivel = conn.execute("SELECT 1 FROM funcionarios WHERE id = ?", (Path(nome).stem,)).fetchone()
+        finally:
+            conn.close()
+        if not visivel:
+            abort(404)
     return send_from_directory(pastas[pasta], nome)
 
 

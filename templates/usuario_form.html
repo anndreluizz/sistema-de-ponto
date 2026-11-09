@@ -30,6 +30,20 @@
         </select>
       </div>
 
+      <div class="mb-3">
+        <label class="form-label" for="setor_id">Setor</label>
+        <select name="setor_id" id="setor_id" class="form-select">
+          <option value="">Todos os setores</option>
+          {% for s in setores %}
+            <option value="{{ s.id }}" {{ "selected" if usuario and usuario.setor_id == s.id else "" }}>{{ s.nome }}</option>
+          {% endfor %}
+        </select>
+        <div class="form-text">
+          Para chefe de setor: escolha o setor e o perfil Direção ou Consulta — ele só verá a equipe desse setor.
+          Administrador e RH sempre veem todos.
+        </div>
+      </div>
+
       {% if not usuario %}
         <div class="mb-3">
           <label class="form-label">Senha</label>

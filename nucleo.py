@@ -331,7 +331,7 @@ def login_obrigatorio(f):
         conn = db.get_db()
         try:
             usuario = conn.execute(
-                "SELECT perfil, versao_sessao FROM usuarios WHERE id = ? AND ativo = 1", (session["usuario_id"],)
+                "SELECT perfil, versao_sessao, setor_id FROM usuarios WHERE id = ? AND ativo = 1", (session["usuario_id"],)
             ).fetchone()
         finally:
             conn.close()
@@ -343,6 +343,7 @@ def login_obrigatorio(f):
             flash("Sua senha foi alterada. Entre de novo.", "erro")
             return redirect(url_for("login"))
         session["usuario_perfil"] = usuario["perfil"]
+        session["usuario_setor_id"] = usuario["setor_id"] if usuario["perfil"] in db.PERFIS_COM_SETOR else None
         if session.get("senha_padrao") and request.endpoint not in ("trocar_senha", "logout"):
             flash("Por segurança, troque a senha padrão antes de continuar.", "erro")
             return redirect(url_for("trocar_senha"))
